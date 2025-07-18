@@ -43,14 +43,15 @@ export default function Chat() {
   // 自动识别URL中的role参数，或用localStorage记住身份
   useEffect(() => {
     let r = '';
-    if (typeof urlRole === 'string' && (urlRole === 'customer' || urlRole === 'developer')) {
-      r = urlRole;
+    // 新增：如果url中包含developer（不区分大小写），自动判定为开发者，否则为客户
+    if (typeof window !== 'undefined' && window.location.search.toLowerCase().includes('developer')) {
+      r = 'developer';
       setRole(r);
       localStorage.setItem(roleKey, r);
     } else {
-      // 没有url参数时，尝试读取本地身份
-      const saved = localStorage.getItem(roleKey);
-      if (saved === 'customer' || saved === 'developer') setRole(saved);
+      r = 'customer';
+      setRole(r);
+      localStorage.setItem(roleKey, r);
     }
   }, [urlRole, roleKey]);
 
@@ -146,17 +147,6 @@ export default function Chat() {
           })}
         <div ref={bottomRef}></div>
       </div>
-      {/* 只有没自动识别到身份时才显示选择 */}
-      {!role && (
-        <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:16}}>
-          <span style={{fontWeight:600}}>{t.roleLabel}:</span>
-          <select value={role} onChange={e=>{setRole(e.target.value); localStorage.setItem(roleKey, e.target.value);}} style={{padding:'6px 12px',borderRadius:6,border:'1px solid #e5e7eb',fontSize:15}}>
-            <option value="">{t.selectRole}</option>
-            <option value="customer">{t.customer}</option>
-            <option value="developer">{t.developer}</option>
-          </select>
-        </div>
-      )}
       <div style={{display:'flex',gap:10}}>
         <input value={input} onChange={e=>setInput(e.target.value)} placeholder={t.inputPlaceholder} style={{flex:1,padding:'10px 14px',borderRadius:8,border:'1px solid #e5e7eb',fontSize:16}} onKeyDown={e=>{if(e.key==='Enter')sendMsg();}} />
         <button className="btn" style={{background:'#1890ff',color:'#fff',borderRadius:8,fontWeight:600,padding:'10px 28px',fontSize:16}} onClick={sendMsg}>{t.send}</button>

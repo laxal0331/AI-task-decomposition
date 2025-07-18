@@ -218,18 +218,49 @@ export default function ResultPage() {
           <span style={{position:'absolute', left:'50%', top:0, transform:'translateX(-50%)', fontWeight:600, color:'#222', fontSize:14}}>{Math.round(overallProgress*100)}%</span>
         </div>
       </div>
-      <div style={{marginBottom:24, display:'flex', alignItems:'center', gap:16}}>
-        <span style={{fontWeight:600}}>{lang === 'zh' ? '排序方式：' : 'Sort by:'}</span>
+      <div style={{marginBottom:24, display:'flex', alignItems:'center'}}>
+        <div style={{display:'flex', alignItems:'center', gap:16}}>
+          <span style={{fontWeight:600}}>{lang === 'zh' ? '排序方式：' : 'Sort by:'}</span>
+          <button
+            className="btn"
+            style={{background: sortMode==='default' ? '#1890ff' : '#f1f5f9', color: sortMode==='default' ? '#fff' : '#222', borderRadius:6, fontWeight:600, fontSize:14, padding:'4px 18px', border:'none', cursor:'pointer'}}
+            onClick={()=>setSortMode('default')}
+          >{lang==='zh'?'默认顺序':'Default'}</button>
+          <button
+            className="btn"
+            style={{background: sortMode==='status' ? '#1890ff' : '#f1f5f9', color: sortMode==='status' ? '#fff' : '#222', borderRadius:6, fontWeight:600, fontSize:14, padding:'4px 18px', border:'none', cursor:'pointer'}}
+            onClick={()=>setSortMode('status')}
+          >{lang==='zh'?'按进程分类':'By Status'}</button>
+        </div>
         <button
           className="btn"
-          style={{background: sortMode==='default' ? '#1890ff' : '#f1f5f9', color: sortMode==='default' ? '#fff' : '#222', borderRadius:6, fontWeight:600, fontSize:14, padding:'4px 18px', border:'none', cursor:'pointer'}}
-          onClick={()=>setSortMode('default')}
-        >{lang==='zh'?'默认顺序':'Default'}</button>
-        <button
-          className="btn"
-          style={{background: sortMode==='status' ? '#1890ff' : '#f1f5f9', color: sortMode==='status' ? '#fff' : '#222', borderRadius:6, fontWeight:600, fontSize:14, padding:'4px 18px', border:'none', cursor:'pointer'}}
-          onClick={()=>setSortMode('status')}
-        >{lang==='zh'?'按进程分类':'By Status'}</button>
+          style={{marginLeft: 'auto', background: '#f1f5f9', color: '#1890ff', borderRadius:6, fontWeight:600, fontSize:14, padding:'4px 18px', border:'none', cursor:'pointer'}}
+          onClick={() => {
+            if (!data?.tasks) return;
+            const allExpanded = data.tasks.every((task: any, i: number) => expanded[task.id || i]);
+            if (allExpanded) {
+              // 全部收起
+              const newExp: Record<string, boolean> = {};
+              data.tasks.forEach((task: any, i: number) => { newExp[task.id || i] = false; });
+              setExpanded(newExp);
+            } else {
+              // 全部展开
+              const newExp: Record<string, boolean> = {};
+              data.tasks.forEach((task: any, i: number) => { newExp[task.id || i] = true; });
+              setExpanded(newExp);
+            }
+          }}
+        >
+          {
+            (() => {
+              if (!data?.tasks) return '';
+              const allExpanded = data.tasks.every((task: any, i: number) => expanded[task.id || i]);
+              return lang === 'zh'
+                ? (allExpanded ? '全部收起' : '全部展开')
+                : (allExpanded ? 'Collapse All' : 'Expand All');
+            })()
+          }
+        </button>
       </div>
       {finished ? (
         <div style={{display:'flex',flexDirection:'column',justifyContent:'center',alignItems:'center',height:'60vh'}}>
