@@ -1,0 +1,169 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f7f9fb;
+  --foreground: #1a2233;
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --secondary: #64748b;
+  --card-bg: #fff;
+  --card-shadow: 0 2px 12px rgba(30, 41, 59, 0.08);
+  --border-radius: 12px;
+  --font-sans: 'Inter', 'Helvetica Neue', Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 700;
+  color: var(--foreground);
+  margin-bottom: 0.5em;
+}
+
+button, .btn {
+  background: var(--primary);
+  color: #fff;
+  font-weight: 700;
+  font-size: 1.08em;
+  padding: 0.6em 2em;
+  border-radius: var(--border-radius);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.08);
+  border: none;
+  margin-right: 0.5em;
+}
+button:hover, .btn:hover {
+  background: var(--primary-hover);
+}
+button:disabled, .btn:disabled {
+  background: #cbd5e1;
+  color: #fff;
+  cursor: not-allowed;
+}
+
+.member-badge {
+  display: inline-block;
+  background: #f1f5f9;
+  color: #1a2233;
+  border-radius: 8px;
+  padding: 0.25em 0.9em;
+  margin: 0.15em 0.3em 0.15em 0;
+  font-size: 0.98em;
+  font-weight: 500;
+  box-shadow: 0 1px 4px rgba(30,41,59,0.06);
+  vertical-align: middle;
+  transition: background 0.2s, color 0.2s;
+}
+.member-badge:hover {
+  background: #e0e7ef;
+  color: var(--primary);
+}
+
+.card, .border, .rounded, .shadow {
+  background: var(--card-bg);
+  border-radius: var(--border-radius);
+  box-shadow: var(--card-shadow);
+  border: 1px solid #e2e8f0;
+  padding: 1.1em 1.5em 1.1em 1.5em;
+  margin-bottom: 1.2em;
+  text-align: left;
+}
+
+input, textarea {
+  font-family: var(--font-sans);
+  border-radius: var(--border-radius);
+  border: 1px solid #e2e8f0;
+  background: #f1f5f9;
+  padding: 0.75em 1em;
+  margin-bottom: 1em;
+  font-size: 1em;
+  transition: border 0.2s;
+}
+input:focus, textarea:focus {
+  border: 1.5px solid var(--primary);
+  background: #fff;
+}
+
+/* 弹窗样式 */
+.popup, .modal {
+  background: #fff;
+  border-radius: var(--border-radius);
+  box-shadow: 0 8px 32px rgba(30, 41, 59, 0.18);
+  padding: 1.5em 1.2em 1.2em 1.2em;
+  min-width: 260px;
+  border: 1px solid #e2e8f0;
+  text-align: left;
+}
+
+/* 链接样式 */
+a, .text-blue-600 {
+  color: var(--primary);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+a:hover, .text-blue-600:hover {
+  color: var(--primary-hover);
+  text-decoration: underline;
+}
+
+/* 细节优化 */
+::-webkit-scrollbar {
+  width: 8px;
+  background: #e2e8f0;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 8px;
+}
+
+.stats-area {
+  font-size: 1.08em;
+  font-weight: 600;
+  color: var(--foreground);
+  margin-bottom: 0.5em;
+}
+
+.text-strong {
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.text-danger {
+  color: #e11d48;
+  font-weight: 700;
+}
+
+.selected-member {
+  border: 2px solid #22c55e;
+  color: #14532d !important;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(34,197,94,0.08);
+  background: #f0fdf4;
+  border-radius: 8px;
+  padding: 2px 8px;
+  margin-right: 4px;
+  transition: box-shadow 0.2s, background 0.2s;
+}
+.selected-member:hover {
+  background: #bbf7d0;
+  box-shadow: 0 4px 16px rgba(34,197,94,0.15);
+}
