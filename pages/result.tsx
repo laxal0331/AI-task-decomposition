@@ -291,10 +291,12 @@ export default function ResultPage() {
                           {(() => {
                             const memberId = task.assigned_member_id;
                             if (!memberId) return <span style={{color:'#888'}}>{lang==='zh'?'未分配':'Unassigned'}</span>;
-                            console.log('Looking for member ID:', memberId, 'in teamData length:', teamData.length);
-                            const member = teamData.find(m => m.id === memberId);
-                            console.log('Found member:', member);
-                            return member ? member.name : memberId;
+                            const member = teamData.find(m => String(m.id) === String(memberId));
+                            // 方案一：直接用数据库 name/name_en 字段
+                            const displayName = lang === 'zh'
+                              ? (member ? member.name : `成员${memberId}`)
+                              : (member ? member.name_en || `Member ${memberId}` : `Member ${memberId}`);
+                            return displayName;
                           })()}
                         </div>
                         <ProgressBar status={task.status} lang={lang} />

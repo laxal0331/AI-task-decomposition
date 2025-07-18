@@ -305,7 +305,7 @@ export const memberService = {
   async getAllMembers() {
     const connection = await pool.getConnection();
     try {
-      const [rows] = await connection.query('SELECT * FROM members');
+      const [rows] = await connection.query('SELECT * FROM team_members');
       return rows;
     } finally {
       connection.release();

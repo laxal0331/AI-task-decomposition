@@ -162,6 +162,27 @@ const texts = {
   }
 };
 
+const orderStatusI18n = {
+  zh: {
+    IN_PROGRESS: '进行中',
+    COMPLETED: '已完成',
+    CANCELLED: '已取消',
+    // 兼容老数据
+    '进行中': '进行中',
+    '已完成': '已完成',
+    '已取消': '已取消',
+  },
+  en: {
+    IN_PROGRESS: 'In Progress',
+    COMPLETED: 'Completed',
+    CANCELLED: 'Cancelled',
+    // 兼容老数据
+    '进行中': 'In Progress',
+    '已完成': 'Completed',
+    '已取消': 'Cancelled',
+  }
+};
+
 export default function TaskPlanner() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -710,7 +731,7 @@ export default function TaskPlanner() {
                     const response = await fetch('/api/assign-tasks', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ assignments })
+                      body: JSON.stringify({ assignments, orderId: dbOrderId })
                     });
                     
                     if (!response.ok) {
@@ -848,13 +869,13 @@ export default function TaskPlanner() {
                             ? '#888'
                             : order.status === 'IN_PROGRESS'
                             ? '#16a34a'
+                            : order.status === 'CANCELLED'
+                            ? '#e11d48'
                             : '#16a34a',
                         fontWeight: 600,
                       }}
                     >
-                      {order.status === 'IN_PROGRESS' ? '进行中' : 
-                       order.status === 'COMPLETED' ? '已完成' : 
-                       order.status === 'CANCELLED' ? '已取消' : order.status}
+                      {(orderStatusI18n[lang] as Record<string, string>)[String(order.status)] || String(order.status)}
                     </div>
                     <button
                       style={{marginLeft:18, color:'#e11d48', background:'none', border:'none', fontWeight:600, cursor:'pointer', fontSize:15}}

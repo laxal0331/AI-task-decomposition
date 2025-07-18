@@ -21,13 +21,21 @@ function setAvailableHours(member: any, newAvailableHours: number[]): string {
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'POST') {
     try {
+      const { assignments, orderId } = req.body;
+      if (assignments && Array.isArray(assignments)) {
+        // 前端传了 assignments，直接写入数据库
+        for (const { taskId, memberId } of assignments) {
+          await taskService.assignTaskToMember(taskId, memberId);
+        }
+        return res.status(200).json({ message: '分配完成', assignments });
+      }
       // 获取所有未分配的任务
-      const allTasks: any[] = await taskService.getTasksByOrderId(req.body.orderId) as any[];
+      const allTasks: any[] = await taskService.getTasksByOrderId(orderId) as any[];
       const unassignedTasks = allTasks.filter((task: any) => !task.assigned_member_id);
 
       // 获取所有成员
       const allMembers: any[] = await memberService.getAllMembers() as any[];
-      let assignments: { taskId: string, memberId: string | null }[] = [];
+      let autoAssignments: { taskId: string, memberId: string | null }[] = [];
 
       for (const task of unassignedTasks) {
         // 查找满足角色且有足够可用工时的成员
@@ -60,13 +68,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           const connection = await require('../../lib/database').default.getConnection();
           await connection.query('UPDATE members SET available_hours = ? WHERE id = ?', [newAvailableHours, candidate.member.id]);
           connection.release();
-          assignments.push({ taskId: task.id, memberId: candidate.member.id });
+          autoAssignments.push({ taskId: task.id, memberId: candidate.member.id });
         } else {
-          assignments.push({ taskId: task.id, memberId: null }); // 无合适成员
+          autoAssignments.push({ taskId: task.id, memberId: null }); // 无合适成员
         }
       }
 
-      res.status(200).json({ message: '分配完成', assignments });
+      res.status(200).json({ message: '分配完成', assignments: autoAssignments });
     } catch (error) {
       console.error('自动分配任务失败', error);
       res.status(500).json({ error: '自动分配任务失败', details: String(error) });

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ProgressBar } from '../lib/ProgressBar';
 import { useRouter } from 'next/router';
 import { STATUS } from './task-planner';
@@ -95,13 +95,6 @@ const statusMap = {
   }
 };
 
-const mockTasks = [
-  { title: '需求分析与产品规划', role: '产品经理', estimated_hours: 10, status: STATUS.PENDING, assignedMemberId: '101' },
-  { title: '前端开发', role: '前端工程师', estimated_hours: 20, status: STATUS.NOT_STARTED, assignedMemberId: '101' },
-  { title: 'UI/UX设计', role: '设计师', estimated_hours: 8, status: STATUS.IN_PROGRESS, assignedMemberId: '202' },
-  { title: '后端开发', role: '后端工程师', estimated_hours: 20, status: STATUS.COMPLETED, assignedMemberId: '303' },
-];
-
 export default function ClientView() {
   const [lang, setLang] = useState<'zh' | 'en'>('zh');
   const t = texts[lang];
@@ -115,36 +108,31 @@ export default function ClientView() {
   const [revokingDoneTaskId, setRevokingDoneTaskId] = useState<string | null>(null);
   const router = useRouter();
 
-  useEffect(() => {
-    // 从数据库获取最新进行中的订单和任务
-    fetchLatestTasks();
-    
-    // 定时刷新任务数据
-    const interval = setInterval(fetchLatestTasks, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const fetchLatestTasks = async () => {
+  const fetchLatestTasks = useCallback(async () => {
     try {
       const res = await fetch('/api/orders');
       const data = await res.json();
-      
+      console.log('orders:', data.orders);
       if (data.orders && data.orders.length > 0) {
-        // 找到最新的进行中订单
-        const latestOrder = data.orders.find((o: any) => o.status === 'IN_PROGRESS');
-        
-        if (latestOrder) {
-          // 获取该订单的任务
-          const tasksRes = await fetch(`/api/orders?orderId=${latestOrder.id}`);
+        // 强制取第一个订单测试
+        const latestOrder = data.orders[0];
+        console.log('latestOrder:', latestOrder);
+        if (latestOrder && latestOrder.id) {
+          const taskUrl = `/api/orders?orderId=${latestOrder.id}`;
+          console.log('请求任务接口:', taskUrl);
+          const tasksRes = await fetch(taskUrl);
           const tasksData = await tasksRes.json();
-          
+          console.log('tasksData:', tasksData);
           if (tasksData.tasks) {
-            const tasksWithMember = tasksData.tasks.map((task: any) => ({
+            const tasksWithMember = (tasksData.tasks as any[]).map((task: any) => ({
               ...task,
               assignedMemberId: task.assigned_member_id,
               orderId: latestOrder.id
             }));
+            console.log('tasksWithMember:', JSON.stringify(tasksWithMember, null, 2), 'memberId:', memberId);
             setTasks(tasksWithMember);
+          } else {
+            setTasks([]);
           }
         } else {
           setTasks([]);
@@ -155,7 +143,13 @@ export default function ClientView() {
     } catch (error) {
       console.error('Fetch tasks error:', error);
     }
-  };
+  }, [memberId]);
+
+  useEffect(() => {
+    fetchLatestTasks();
+    const interval = setInterval(fetchLatestTasks, 5000);
+    return () => clearInterval(interval);
+  }, [fetchLatestTasks]);
 
   const handleAccept = (taskId: string) => {
     // 更新数据库中的任务状态
@@ -166,20 +160,9 @@ export default function ClientView() {
     setRevokingTaskId(taskId);
   };
 
-  const confirmRevoke = () => {
+  const confirmRevoke = async () => {
     if (!revokingTaskId) return;
-    const orders = JSON.parse(localStorage.getItem('orders') || '[]');
-    const latest = [...orders].reverse().find((o: any) => o.status === STATUS.IN_PROGRESS);
-    if (latest) {
-      const orderIdx = orders.findIndex((o: any) => o.id === latest.id);
-      if (orderIdx !== -1) {
-        const taskIdx = latest.tasks.findIndex((t: any) => t.id === revokingTaskId);
-        if (taskIdx !== -1) {
-          orders[orderIdx].tasks[taskIdx].status = STATUS.PENDING;
-          localStorage.setItem('orders', JSON.stringify(orders));
-        }
-      }
-    }
+    await updateTaskStatus(revokingTaskId, STATUS.PENDING);
     setRevokingTaskId(null);
   };
 
@@ -187,20 +170,9 @@ export default function ClientView() {
     setFinishingDevTaskId(taskId);
   };
 
-  const confirmFinishDev = () => {
+  const confirmFinishDev = async () => {
     if (!finishingDevTaskId) return;
-    const orders = JSON.parse(localStorage.getItem('orders') || '[]');
-    const latest = [...orders].reverse().find((o: any) => o.status === STATUS.IN_PROGRESS);
-    if (latest) {
-      const orderIdx = orders.findIndex((o: any) => o.id === latest.id);
-      if (orderIdx !== -1) {
-        const taskIdx = latest.tasks.findIndex((t: any) => t.id === finishingDevTaskId);
-        if (taskIdx !== -1) {
-          orders[orderIdx].tasks[taskIdx].status = STATUS.TESTING;
-          localStorage.setItem('orders', JSON.stringify(orders));
-        }
-      }
-    }
+    await updateTaskStatus(finishingDevTaskId, STATUS.TESTING);
     setFinishingDevTaskId(null);
   };
 
@@ -208,20 +180,9 @@ export default function ClientView() {
     setFinishingTestTaskId(taskId);
   };
 
-  const confirmFinishTest = () => {
+  const confirmFinishTest = async () => {
     if (!finishingTestTaskId) return;
-    const orders = JSON.parse(localStorage.getItem('orders') || '[]');
-    const latest = [...orders].reverse().find((o: any) => o.status === STATUS.IN_PROGRESS);
-    if (latest) {
-      const orderIdx = orders.findIndex((o: any) => o.id === latest.id);
-      if (orderIdx !== -1) {
-        const taskIdx = latest.tasks.findIndex((t: any) => t.id === finishingTestTaskId);
-        if (taskIdx !== -1) {
-          orders[orderIdx].tasks[taskIdx].status = STATUS.COMPLETED;
-          localStorage.setItem('orders', JSON.stringify(orders));
-        }
-      }
-    }
+    await updateTaskStatus(finishingTestTaskId, STATUS.COMPLETED);
     setFinishingTestTaskId(null);
   };
 
@@ -229,20 +190,9 @@ export default function ClientView() {
     setRevokingTestTaskId(taskId);
   };
 
-  const confirmRevokeTest = () => {
+  const confirmRevokeTest = async () => {
     if (!revokingTestTaskId) return;
-    const orders = JSON.parse(localStorage.getItem('orders') || '[]');
-    const latest = [...orders].reverse().find((o: any) => o.status === STATUS.IN_PROGRESS);
-    if (latest) {
-      const orderIdx = orders.findIndex((o: any) => o.id === latest.id);
-      if (orderIdx !== -1) {
-        const taskIdx = latest.tasks.findIndex((t: any) => t.id === revokingTestTaskId);
-        if (taskIdx !== -1) {
-          orders[orderIdx].tasks[taskIdx].status = STATUS.IN_PROGRESS;
-          localStorage.setItem('orders', JSON.stringify(orders));
-        }
-      }
-    }
+    await updateTaskStatus(revokingTestTaskId, STATUS.IN_PROGRESS);
     setRevokingTestTaskId(null);
   };
 
@@ -250,20 +200,9 @@ export default function ClientView() {
     setRevokingDoneTaskId(taskId);
   };
 
-  const confirmRevokeDone = () => {
+  const confirmRevokeDone = async () => {
     if (!revokingDoneTaskId) return;
-    const orders = JSON.parse(localStorage.getItem('orders') || '[]');
-    const latest = [...orders].reverse().find((o: any) => o.status === STATUS.IN_PROGRESS);
-    if (latest) {
-      const orderIdx = orders.findIndex((o: any) => o.id === latest.id);
-      if (orderIdx !== -1) {
-        const taskIdx = latest.tasks.findIndex((t: any) => t.id === revokingDoneTaskId);
-        if (taskIdx !== -1) {
-          orders[orderIdx].tasks[taskIdx].status = STATUS.TESTING;
-          localStorage.setItem('orders', JSON.stringify(orders));
-        }
-      }
-    }
+    await updateTaskStatus(revokingDoneTaskId, STATUS.TESTING);
     setRevokingDoneTaskId(null);
   };
 
@@ -288,8 +227,10 @@ export default function ClientView() {
     }
   };
 
-  // 只用 tasks.assigned_member_id 进行过滤，memberId 支持字符串和数字
-  const myTasks = tasks.filter(t => String(t.assigned_member_id) === String(memberId));
+  // 增强过滤逻辑，确保类型一致且去除空格
+  console.log('memberId:', memberId, 'assignedMemberIds:', tasks.map(t => t.assignedMemberId));
+  const myTasks = tasks.filter(t => String(t.assignedMemberId).trim() === String(memberId).trim());
+  console.log('myTasks:', myTasks);
 
   return (
     <div className="max-w-2xl mx-auto mt-10 p-6" style={{ position: 'relative' }}>
