@@ -3,12 +3,13 @@ import pool from './database';
 // 订单相关操作
 export const orderService = {
   // 创建订单
-  async createOrder(orderId: string, goal: string, assignMode: string, taskCount: number = 0) {
+  async createOrder(orderId: string, goal: string, assignMode: string, taskCount: number = 0, lang: string = 'zh') {
     const connection = await pool.getConnection();
     try {
+      const status = lang === 'zh' ? '未开始' : 'Not Started';
       await connection.execute(
-        'INSERT INTO orders (id, goal, assign_mode, task_count) VALUES (?, ?, ?, ?)',
-        [orderId, goal, assignMode, taskCount]
+        'INSERT INTO orders (id, goal, assign_mode, task_count, status) VALUES (?, ?, ?, ?, ?)',
+        [orderId, goal, assignMode, taskCount, status]
       );
     } finally {
       connection.release();
@@ -186,6 +187,19 @@ export const taskService = {
     } finally {
       connection.release();
     }
+  },
+
+  // 获取所有任务
+  async getAllTasks() {
+    const connection = await pool.getConnection();
+    try {
+      const [rows] = await connection.execute(
+        'SELECT * FROM tasks ORDER BY created_at ASC'
+      );
+      return rows;
+    } finally {
+      connection.release();
+    }
   }
 };
 
@@ -265,65 +279,6 @@ export const migrationService = {
   }
 };
 
-// 成员相关操作
-export const memberService = {
-  // 批量插入成员
-  async bulkInsertMembers(members: Array<{
-    id: string;
-    name: string;
-    roles: string[];
-    skills: string[];
-    available_hours: number[];
-    experience_score: number;
-    hourly_rate: number;
-    speed_factor: number;
-  }>) {
-    if (!members || members.length === 0) return;
-    const connection = await pool.getConnection();
-    try {
-      const values = members.map(m => [
-        m.id,
-        m.name,
-        JSON.stringify(m.roles),
-        JSON.stringify(m.skills),
-        JSON.stringify(m.available_hours),
-        m.experience_score,
-        m.hourly_rate,
-        m.speed_factor
-      ]);
-      await connection.query(
-        `INSERT IGNORE INTO members (id, name, roles, skills, available_hours, experience_score, hourly_rate, speed_factor)
-         VALUES ?`,
-        [values]
-      );
-    } finally {
-      connection.release();
-    }
-  },
-
-  // 查询所有成员
-  async getAllMembers() {
-    const connection = await pool.getConnection();
-    try {
-      const [rows] = await connection.query('SELECT * FROM team_members');
-      return rows;
-    } finally {
-      connection.release();
-    }
-  },
-
-  // 按ID查成员
-  async getMemberById(id: string) {
-    const connection = await pool.getConnection();
-    try {
-      const [rows] = await connection.query('SELECT * FROM members WHERE id = ?', [id]);
-      return (rows as any[])[0] || null;
-    } finally {
-      connection.release();
-    }
-  }
-};
-
 // 团队成员相关服务
 export const teamMemberService = {
   // 批量插入成员
@@ -333,6 +288,8 @@ export const teamMemberService = {
       const values = members.map(m => [
         m.id,
         m.name,
+        m.name_zh || m.name,
+        m.name_en || m.name,
         JSON.stringify(m.roles),
         JSON.stringify(m.skills),
         JSON.stringify(m.available_hours),
@@ -341,7 +298,7 @@ export const teamMemberService = {
         m.speed_factor
       ]);
       await connection.query(
-        'INSERT IGNORE INTO team_members (id, name, roles, skills, available_hours, experience_score, hourly_rate, speed_factor) VALUES ?',[values]
+        'INSERT IGNORE INTO team_members (id, name, name_zh, name_en, roles, skills, available_hours, experience_score, hourly_rate, speed_factor) VALUES ?',[values]
       );
     } finally {
       connection.release();

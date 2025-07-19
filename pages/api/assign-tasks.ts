@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { taskService, memberService } from '../../lib/dbService';
+import { taskService, teamMemberService, orderService } from '../../lib/dbService';
 
 // 工具函数：解析成员的 available_hours 字段（JSON字符串）
 function getAvailableHours(member: any): number[] {
@@ -27,6 +27,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         for (const { taskId, memberId } of assignments) {
           await taskService.assignTaskToMember(taskId, memberId);
         }
+        // 分配成功后，更新订单状态为"进行中"
+        if (orderId) {
+          await orderService.updateOrderStatus(orderId, '进行中');
+        }
         return res.status(200).json({ message: '分配完成', assignments });
       }
       // 获取所有未分配的任务
@@ -34,7 +38,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const unassignedTasks = allTasks.filter((task: any) => !task.assigned_member_id);
 
       // 获取所有成员
-      const allMembers: any[] = await memberService.getAllMembers() as any[];
+      const allMembers: any[] = await teamMemberService.getAll() as any[];
       let autoAssignments: { taskId: string, memberId: string | null }[] = [];
 
       for (const task of unassignedTasks) {
@@ -66,7 +70,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           const newAvailableHours = setAvailableHours(candidate.member, candidate.availableHours);
           // 更新成员 available_hours
           const connection = await require('../../lib/database').default.getConnection();
-          await connection.query('UPDATE members SET available_hours = ? WHERE id = ?', [newAvailableHours, candidate.member.id]);
+          await connection.query('UPDATE team_members SET available_hours = ? WHERE id = ?', [newAvailableHours, candidate.member.id]);
           connection.release();
           autoAssignments.push({ taskId: task.id, memberId: candidate.member.id });
         } else {

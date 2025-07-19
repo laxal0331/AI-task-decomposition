@@ -1,6 +1,6 @@
-const { seedTeamMembers } = require('./lib/teamData');
-const { teamMemberService } = require('./lib/dbService');
-const { initDatabase } = require('./lib/database');
+import { seedTeamMembers } from './lib/teamData.js';
+import { teamMemberService } from './lib/dbService.js';
+import { initDatabase } from './lib/database.js';
 
 async function init() {
   try {

@@ -95,6 +95,8 @@ export async function initDatabase() {
       CREATE TABLE IF NOT EXISTS team_members (
         id VARCHAR(255) PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
+        name_zh VARCHAR(255),
+        name_en VARCHAR(255),
         roles TEXT NOT NULL,
         skills TEXT NOT NULL,
         available_hours TEXT NOT NULL,

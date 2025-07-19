@@ -126,7 +126,16 @@ export default function Chat() {
   // 聊天区宽度放大
   return (
     <div style={{maxWidth:700,minWidth:360,margin:'40px auto',padding:32,background:'#fff',borderRadius:16,boxShadow:'0 2px 16px rgba(0,0,0,0.10)'}}>
-      <button style={{position:'absolute',right:24,top:24,zIndex:1000}} className="btn" onClick={()=>setLang(lang==='zh'?'en':'zh')}>{t.lang}</button>
+      {/* 右上角语言切换 */}
+      <div style={{ position: 'fixed', right: 24, top: 24, zIndex: 3000 }}>
+        <button 
+          className="btn" 
+          onClick={() => setLang(lang === 'zh' ? 'en' : 'zh')}
+        >
+          {t.lang}
+        </button>
+      </div>
+      
       <h2 style={{fontWeight:700,fontSize:26,marginBottom:20}}>{t.title} {orderId && taskId ? `#${String(orderId).slice(-4)}-${String(taskId).slice(-4)}` : ''}</h2>
       <div style={{minHeight:320,maxHeight:480,overflowY:'auto',background:'#f8fafc',borderRadius:10,padding:18,marginBottom:20}}>
         {messages.length === 0 ? <div style={{color:'#888'}}>{t.empty}</div> :

@@ -4,11 +4,16 @@ import { orderService, taskService, teamMemberService } from "../../lib/dbServic
 import { initDatabase } from "../../lib/database";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const { goal, assignMode } = req.body;
+  const { goal, assignMode, lang = 'zh' } = req.body;
 
   if (!goal) {
     return res.status(400).json({ error: "请输入目标" });
   }
+
+  // 调试环境变量
+  console.log("环境变量检查:");
+  console.log("DEEPSEEK_API_KEY 存在:", !!process.env.DEEPSEEK_API_KEY);
+  console.log("DEEPSEEK_API_KEY 长度:", process.env.DEEPSEEK_API_KEY?.length || 0);
 
   try {
     // 首先初始化数据库（如果不存在）
@@ -31,7 +36,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     
     // 创建订单（带任务数量）
     const orderId = Date.now().toString();
-    await orderService.createOrder(orderId, goal, assignMode, tasks.length);
+    await orderService.createOrder(orderId, goal, assignMode, tasks.length, lang);
     
     // 保存任务到数据库，并补充id字段
     const tasksWithId = [];

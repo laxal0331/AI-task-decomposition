@@ -13,6 +13,7 @@ const texts = {
     ordersFound: '找到 {count} 个订单',
     tasksFound: '找到 {count} 个任务',
     messagesFound: '找到 {count} 条消息',
+    lang: '中文',
   },
   en: {
     title: 'Data Migration',
@@ -25,6 +26,7 @@ const texts = {
     ordersFound: 'Found {count} orders',
     tasksFound: 'Found {count} tasks',
     messagesFound: 'Found {count} messages',
+    lang: 'English',
   },
 };
 
@@ -104,18 +106,15 @@ export default function MigratePage() {
 
   return (
     <div className="max-w-2xl mx-auto mt-10 p-6">
-      <button
-        style={{
-          position: 'absolute',
-          right: 24,
-          top: 24,
-          zIndex: 1000
-        }}
-        className="btn"
-        onClick={() => setLang(lang === 'zh' ? 'en' : 'zh')}
-      >
-        {lang === 'zh' ? 'English' : '中文'}
-      </button>
+      {/* 右上角语言切换 */}
+      <div style={{ position: 'fixed', right: 24, top: 24, zIndex: 3000 }}>
+        <button 
+          className="btn" 
+          onClick={() => setLang(lang === 'zh' ? 'en' : 'zh')}
+        >
+          {t.lang}
+        </button>
+      </div>
 
       <h1 className="text-3xl font-bold mb-6">{t.title}</h1>
       <p className="text-gray-600 mb-8">{t.description}</p>

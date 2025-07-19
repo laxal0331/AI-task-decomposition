@@ -5,8 +5,8 @@ import { STATUS } from './task-planner';
 
 const texts = {
   zh: {
-    title: '成员端任务进度',
-    memberId: '成员ID：',
+    title: '开发端任务进度',
+    memberId: '开发者ID：',
     noTask: '当前没有分配给你的任务',
     accept: '接受任务',
     revoke: '撤回',
@@ -30,13 +30,13 @@ const texts = {
     confirmRevokeTest: '确认撤回到开发中？',
     revokeDone: '撤回',
     confirmRevokeDone: '确认撤回到测试中？',
-    memberIdPlaceholder: '请输入成员ID',
+    memberIdPlaceholder: '请输入开发者ID',
     chat: '去交流区',
     currentStatus: '当前状态：',
   },
   en: {
-    title: 'Member Task Progress',
-    memberId: 'Member ID:',
+    title: 'Developer Task Progress',
+    memberId: 'Developer ID:',
     noTask: 'No tasks assigned to you',
     accept: 'Accept Task',
     revoke: 'Revoke',
@@ -60,7 +60,7 @@ const texts = {
     confirmRevokeTest: 'Revoke to development in progress?',
     revokeDone: 'Revoke',
     confirmRevokeDone: 'Revoke to testing?',
-    memberIdPlaceholder: 'Please enter member ID',
+    memberIdPlaceholder: 'Please enter developer ID',
     chat: 'Go to Chat',
     currentStatus: 'Current Status:',
   },
@@ -152,8 +152,13 @@ export default function ClientView() {
   }, [fetchLatestTasks]);
 
   const handleAccept = (taskId: string) => {
-    // 更新数据库中的任务状态
-    updateTaskStatus(taskId, 'IN_PROGRESS');
+    setAcceptingTaskId(taskId);
+  };
+
+  const confirmAccept = async () => {
+    if (!acceptingTaskId) return;
+    await updateTaskStatus(acceptingTaskId, STATUS.IN_PROGRESS);
+    setAcceptingTaskId(null);
   };
 
   const handleRevoke = (taskId: string) => {
@@ -233,12 +238,17 @@ export default function ClientView() {
   console.log('myTasks:', myTasks);
 
   return (
-    <div className="max-w-2xl mx-auto mt-10 p-6" style={{ position: 'relative' }}>
-      <button
-        style={{ position: 'absolute', right: 24, top: 24, zIndex: 1000 }}
-        className="btn"
-        onClick={() => setLang(lang === 'zh' ? 'en' : 'zh')}
-      >{t.lang}</button>
+    <div className="max-w-2xl mx-auto mt-10 p-6">
+      {/* 右上角语言切换 */}
+      <div style={{ position: 'fixed', right: 24, top: 24, zIndex: 3000 }}>
+        <button 
+          className="btn" 
+          onClick={() => setLang(lang === 'zh' ? 'en' : 'zh')}
+        >
+          {t.lang}
+        </button>
+      </div>
+
       <h1 className="text-2xl font-bold mb-6">{t.title}</h1>
       <div className="mb-6 flex items-center gap-2">
         <span>{t.memberId}</span>
@@ -287,7 +297,7 @@ export default function ClientView() {
           }}>
             <div style={{fontWeight:700, fontSize:22, marginBottom:18}}>{t.confirmAccept}</div>
             <div style={{display:'flex', justifyContent:'center', gap:24}}>
-              <button style={{background:'#1890ff',color:'#fff',border:'none',borderRadius:8,fontWeight:700,fontSize:16,padding:'8px 28px',cursor:'pointer'}} onClick={() => updateTaskStatus(acceptingTaskId, 'IN_PROGRESS')}>{t.confirm}</button>
+              <button style={{background:'#1890ff',color:'#fff',border:'none',borderRadius:8,fontWeight:700,fontSize:16,padding:'8px 28px',cursor:'pointer'}} onClick={confirmAccept}>{t.confirm}</button>
               <button style={{background:'#f1f5f9',color:'#222',border:'none',borderRadius:8,fontWeight:600,fontSize:16,padding:'8px 28px',cursor:'pointer'}} onClick={()=>setAcceptingTaskId(null)}>{t.cancel}</button>
             </div>
           </div>

@@ -4,7 +4,22 @@ import { orderService } from '../../../lib/dbService';
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { orderId } = req.query;
 
-  if (req.method === 'DELETE') {
+  if (req.method === 'PATCH') {
+    try {
+      if (!orderId) {
+        return res.status(400).json({ error: '缺少订单ID' });
+      }
+      const { status } = req.body;
+      if (!status) {
+        return res.status(400).json({ error: '缺少状态参数' });
+      }
+      await orderService.updateOrderStatus(orderId as string, status);
+      res.status(200).json({ message: '订单状态更新成功' });
+    } catch (error) {
+      console.error('Update order status error:', error);
+      res.status(500).json({ error: '订单状态更新失败', details: String(error) });
+    }
+  } else if (req.method === 'DELETE') {
     try {
       if (!orderId) {
         return res.status(400).json({ error: '缺少订单ID' });

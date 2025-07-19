@@ -1,5 +1,6 @@
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
+import React from 'react';
 import { ProgressBar } from '../lib/ProgressBar';
 import { STATUS } from './task-planner';
 
@@ -37,7 +38,7 @@ const texts = {
   zh: {
     title: '分配结果',
     task: '任务',
-    member: '分配成员',
+    member: '分配开发者',
     back: '返回',
     noData: '无分配数据',
     finished: '订单已取消',
@@ -55,11 +56,12 @@ const texts = {
     delivered: '订单已交付',
     deliverOrder: '确认交付',
     confirmDeliver: '确认交付该订单？',
+    lang: '中文',
   },
   en: {
     title: 'Assignment Result',
     task: 'Task',
-    member: 'Assigned Member',
+    member: 'Assigned Developer',
     back: 'Back',
     noData: 'No assignment data',
     finished: 'Order Cancelled',
@@ -77,6 +79,7 @@ const texts = {
     delivered: 'Order Delivered',
     deliverOrder: 'Deliver Order',
     confirmDeliver: 'Are you sure to deliver this order?',
+    lang: 'English',
   },
 };
 
@@ -106,6 +109,8 @@ export default function ResultPage() {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [sortMode, setSortMode] = useState<'default' | 'status'>('default');
   const [teamData, setTeamData] = useState<any[]>([]);
+  const [finishedType, setFinishedType] = useState<'cancelled' | 'delivered' | null>(null);
+  const [orderStatus, setOrderStatus] = useState<string | null>(null);
 
   useEffect(() => {
     // 优先从数据库获取订单数据
@@ -113,6 +118,18 @@ export default function ResultPage() {
       fetchOrderData(router.query.orderId as string);
     }
   }, [router.query.orderId, router.query.data]);
+
+  // 添加实时刷新功能
+  useEffect(() => {
+    if (!router.query.orderId) return;
+    
+    // 每5秒刷新一次数据
+    const interval = setInterval(() => {
+      fetchOrderData(router.query.orderId as string);
+    }, 5000);
+    
+    return () => clearInterval(interval);
+  }, [router.query.orderId]);
 
   useEffect(() => {
     async function fetchMembers() {
@@ -139,25 +156,104 @@ export default function ResultPage() {
         selectedMembers: data.selectedMembers || {},
         orderId: orderId
       });
+      if (data.order && data.order.status) {
+        setOrderStatus(data.order.status);
+      }
     } catch (error) {
       console.error('Fetch order error:', error);
     }
   };
 
   const handleFinishOrder = () => setShowFinishModal(true);
-  const confirmFinishOrder = () => {
+  const confirmFinishOrder = async () => {
     if (!data?.orderId) return;
-    // TODO: 更新数据库中的订单状态
+    setFinishedType('cancelled');
     setFinished(true);
     setShowFinishModal(false);
+    try {
+      const status = lang === 'zh' ? '已取消' : 'Cancelled';
+      const res = await fetch(`/api/orders/${data.orderId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) {
+        alert(lang === 'zh' ? '取消订单失败' : 'Failed to cancel order');
+      } else {
+        fetchOrderData(data.orderId);
+      }
+    } catch (error) {
+      alert(lang === 'zh' ? '取消订单失败' : 'Failed to cancel order');
+    }
   };
 
   const handleDeliverOrder = () => setShowDeliverModal(true);
-  const confirmDeliverOrder = () => {
+  const confirmDeliverOrder = async () => {
     if (!data?.orderId) return;
-    // TODO: 更新数据库中的订单状态
+    setFinishedType('delivered');
+    setFinished(true);
     setShowDeliverModal(false);
-    setFinished(false);
+    try {
+      const status = lang === 'zh' ? '已交付' : 'Delivered';
+      const res = await fetch(`/api/orders/${data.orderId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) {
+        alert(lang === 'zh' ? '交付订单失败' : 'Failed to deliver order');
+      } else {
+        fetchOrderData(data.orderId);
+      }
+    } catch (error) {
+      alert(lang === 'zh' ? '交付订单失败' : 'Failed to deliver order');
+    }
+  };
+
+  // 按状态排序任务
+  const getSortedTasks = () => {
+    if (!data?.tasks) return [];
+    
+    if (sortMode === 'status') {
+      // 按状态分组排序
+      const statusOrder = [STATUS.NOT_STARTED, STATUS.PENDING, STATUS.IN_PROGRESS, STATUS.TESTING, STATUS.COMPLETED];
+      const groupedTasks: { [key: string]: any[] } = {};
+      
+      // 初始化分组
+      statusOrder.forEach(status => {
+        groupedTasks[status] = [];
+      });
+      
+      // 分组任务
+      data.tasks.forEach(task => {
+        const status = task.status;
+        if (groupedTasks[status]) {
+          groupedTasks[status].push(task);
+        } else {
+          // 如果状态不在预定义列表中，放到最后
+          if (!groupedTasks['other']) groupedTasks['other'] = [];
+          groupedTasks['other'].push(task);
+        }
+      });
+      
+      // 按状态顺序返回任务
+      const sortedTasks: any[] = [];
+      statusOrder.forEach(status => {
+        if (groupedTasks[status] && groupedTasks[status].length > 0) {
+          sortedTasks.push(...groupedTasks[status]);
+        }
+      });
+      
+      // 添加其他状态的任务
+      if (groupedTasks['other']) {
+        sortedTasks.push(...groupedTasks['other']);
+      }
+      
+      return sortedTasks;
+    } else {
+      // 默认顺序
+      return data.tasks;
+    }
   };
 
   // 计算整体进度（方案B：只有进行中/测试中/已完成才有进度）
@@ -207,8 +303,15 @@ export default function ResultPage() {
         }}
         onClick={() => router.push('/task-planner')}
       >{t.home}</button>
-      <div style={{ position: 'absolute', right: 24, top: 24 }}>
-        <button className="btn" onClick={() => setLang(lang === 'zh' ? 'en' : 'zh')}>{lang === 'zh' ? 'English' : '中文'}</button>
+      
+      {/* 右上角语言切换 */}
+      <div style={{ position: 'fixed', right: 24, top: 24, zIndex: 3000 }}>
+        <button 
+          className="btn" 
+          onClick={() => setLang(lang === 'zh' ? 'en' : 'zh')}
+        >
+          {t.lang}
+        </button>
       </div>
       <h1 className="text-2xl font-bold mb-6">{t.title}</h1>
       <div style={{marginBottom:32}}>
@@ -267,7 +370,7 @@ export default function ResultPage() {
           <span style={{
             fontSize: '3rem',
             fontWeight: 700,
-            color: '#222',
+            color: finishedType === 'delivered' ? '#16a34a' : '#e11d48',
             letterSpacing: 6,
             padding: '32px 64px',
             borderRadius: 16,
@@ -275,7 +378,7 @@ export default function ResultPage() {
             boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
             textAlign: 'center',
             lineHeight: 1.2
-          }}>{t.finished}</span>
+          }}>{finishedType === 'delivered' ? t.delivered : t.finished}</span>
           <button
             style={{
               marginTop: 32,
@@ -298,132 +401,137 @@ export default function ResultPage() {
           {!data ? (
             <div className="text-gray-500 mb-8">{t.noData}</div>
           ) : (
-            <div style={{marginTop:32}}>
-              {data.tasks.map((task, i) => {
-                const isExpanded = expanded[task.id] === true; // 默认收起
+                        <div style={{marginTop:32}}>
+              {getSortedTasks().map((task, i) => {
+                const isExpanded = expanded[task.id] === true;
+                const taskStatusColor = statusColor[task.status] || statusColor[STATUS.NOT_STARTED];
+                
+                // 如果是按状态排序且是新状态组，显示分组标题
+                const showGroupHeader = sortMode === 'status' && 
+                  (i === 0 || getSortedTasks()[i-1]?.status !== task.status);
+                
                 return (
-                  <div key={task.id} style={{ background: '#fff', borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', padding: 24, marginBottom: 18 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <div>
-                        <div style={{ fontWeight: 600, fontSize: 18 }}>{lang === 'zh' ? (task.title_zh || task.title || '') : (task.title_en || task.title || '')}</div>
-                        <div style={{ margin: '8px 0', color: '#888' }}>{t.status}：{statusI18n[lang][task.status] || task.status}</div>
+                  <React.Fragment key={task.id}>
+                    {showGroupHeader && (
+                      <div style={{
+                        marginBottom: 16,
+                        padding: '12px 16px',
+                        background: taskStatusColor.bg,
+                        borderRadius: 8,
+                        borderLeft: `4px solid ${taskStatusColor.text}`,
+                        fontWeight: 700,
+                        fontSize: 16,
+                        color: taskStatusColor.text
+                      }}>
+                        {statusI18n[lang][task.status] || task.status}
                       </div>
-                      <button
-                        onClick={() => setExpanded(prev => ({ ...prev, [task.id]: !isExpanded }))}
-                        style={{ background: '#f1f5f9', border: 'none', borderRadius: 6, padding: '4px 16px', fontWeight: 600, cursor: 'pointer', color: '#1890ff' }}
-                      >
-                        {isExpanded ? t.collapse : t.expand}
-                      </button>
-                    </div>
-                    {isExpanded && (
-                      <>
-                        <div style={{ margin: '8px 0', color: '#1890ff', fontWeight: 500 }}>
-                          {t.member}：
-                          {(() => {
-                            const memberId = task.assigned_member_id;
-                            if (!memberId) return <span style={{color:'#888'}}>{lang==='zh'?'未分配':'Unassigned'}</span>;
+                    )}
+                    <div style={{ 
+                      background: '#fff', 
+                      borderRadius: 12, 
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.06)', 
+                      padding: 24, 
+                      marginBottom: 18,
+                      borderLeft: `4px solid ${taskStatusColor.text}`
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div>
+                          <div style={{ fontWeight: 600, fontSize: 18 }}>{lang === 'zh' ? (task.title_zh || task.title || '') : (task.title_en || task.title || '')}</div>
+                          <div style={{ 
+                            margin: '8px 0', 
+                            color: taskStatusColor.text,
+                            fontWeight: 600,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8
+                          }}>
+                            <div style={{
+                              width: 8,
+                              height: 8,
+                              borderRadius: '50%',
+                              background: taskStatusColor.text
+                            }} />
+                            {t.status}：{statusI18n[lang][task.status] || task.status}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setExpanded(prev => ({ ...prev, [task.id]: !isExpanded }))}
+                          style={{ background: '#f1f5f9', border: 'none', borderRadius: 6, padding: '4px 16px', fontWeight: 600, cursor: 'pointer', color: '#1890ff' }}
+                        >
+                          {isExpanded ? t.collapse : t.expand}
+                        </button>
+                      </div>
+                      {isExpanded && (
+                        <>
+                          <div style={{ margin: '8px 0', color: '#1890ff', fontWeight: 500 }}>
+                            {t.member}：
+                            {(() => {
+                              const memberId = task.assigned_member_id;
+                                                          if (!memberId) return <span style={{color:'#888'}}>{lang==='zh'?'未分配':'Unassigned'}</span>;
                             const member = teamData.find(m => String(m.id) === String(memberId));
                             // 方案一：直接用数据库 name/name_en 字段
                             const displayName = lang === 'zh'
-                              ? (member ? member.name : `成员${memberId}`)
-                              : (member ? member.name_en || `Member ${memberId}` : `Member ${memberId}`);
+                              ? (member ? member.name : `开发者${memberId}`)
+                              : (member ? member.name_en || `Developer ${memberId}` : `Developer ${memberId}`);
                             return displayName;
-                          })()}
-                        </div>
-                        <ProgressBar status={task.status} lang={lang} />
-                        <button
-                          className="btn"
-                          style={{ marginTop: 12 }}
-                          onClick={() => router.push({
-                            pathname: '/chat',
-                            query: { orderId: data.orderId, taskId: task.id }
-                          })}
-                        >
-                          {t.chat}
-                        </button>
-                      </>
-                    )}
-                  </div>
+                            })()}
+                          </div>
+                          <ProgressBar status={task.status} lang={lang} />
+                          <button
+                            className="btn"
+                            style={{ marginTop: 12 }}
+                            onClick={() => router.push({
+                              pathname: '/chat',
+                              query: { orderId: data.orderId, taskId: task.id }
+                            })}
+                          >
+                            {t.chat}
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </React.Fragment>
                 );
               })}
             </div>
           )}
-          {data?.orderId && !finished && (() => {
-            const orders = JSON.parse(localStorage.getItem('orders') || '[]');
-            const order = orders.find((o: any) => o.id === data.orderId);
-            if (order && order.status === '已交付') {
-              return (
-                <div style={{display:'flex',flexDirection:'column',justifyContent:'center',alignItems:'center',height:'60vh'}}>
-                  <span style={{
-                    fontSize: '3rem',
-                    fontWeight: 700,
-                    color: '#222',
-                    letterSpacing: 6,
-                    padding: '32px 64px',
-                    borderRadius: 16,
-                    background: 'linear-gradient(90deg, #f8fafc 0%, #f1f5f9 100%)',
-                    boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
-                    textAlign: 'center',
-                    lineHeight: 1.2
-                  }}>{t.delivered}</span>
-                  <button
-                    style={{
-                      marginTop: 32,
-                      background: '#1890ff',
-                      color: '#fff',
-                      border: 'none',
-                      borderRadius: 8,
-                      fontWeight: 600,
-                      fontSize: 16,
-                      padding: '8px 28px',
-                      boxShadow: '0 2px 8px rgba(24,144,255,0.08)',
-                      cursor: 'pointer',
-                      letterSpacing: 2
-                    }}
-                    onClick={() => router.push('/task-planner')}
-                  >{t.backHome}</button>
-                </div>
-              );
-            }
-            if (order && order.status === '已取消') return null;
-            return (
-              <div style={{display:'flex', gap: 16, marginBottom: 16}}>
-                <button
-                  style={{
-                    background: '#e11d48',
-                    color: '#fff',
-                    fontWeight: 700,
-                    fontSize: 16,
-                    border: 'none',
-                    borderRadius: 8,
-                    padding: '10px 28px',
-                    boxShadow: '0 2px 8px rgba(225,29,72,0.10)',
-                    cursor: 'pointer',
-                    marginRight: 16
-                  }}
-                  onClick={handleFinishOrder}
-                >
-                  {t.finishOrder}
-                </button>
-                <button
-                  style={{
-                    background: '#16a34a',
-                    color: '#fff',
-                    fontWeight: 700,
-                    fontSize: 16,
-                    border: 'none',
-                    borderRadius: 8,
-                    padding: '10px 28px',
-                    boxShadow: '0 2px 8px rgba(22,163,74,0.10)',
-                    cursor: 'pointer',
-                  }}
-                  onClick={handleDeliverOrder}
-                >
-                  {t.deliverOrder}
-                </button>
-              </div>
-            );
-          })()}
+          {data?.orderId && orderStatus !== '已交付' && orderStatus !== 'Delivered' && orderStatus !== '已取消' && orderStatus !== 'Cancelled' && (
+            <div style={{display:'flex', gap: 16, marginBottom: 16}}>
+              <button
+                style={{
+                  background: '#e11d48',
+                  color: '#fff',
+                  fontWeight: 700,
+                  fontSize: 16,
+                  border: 'none',
+                  borderRadius: 8,
+                  padding: '10px 28px',
+                  boxShadow: '0 2px 8px rgba(225,29,72,0.10)',
+                  cursor: 'pointer',
+                  marginRight: 16
+                }}
+                onClick={handleFinishOrder}
+              >
+                {t.finishOrder}
+              </button>
+              <button
+                style={{
+                  background: '#16a34a',
+                  color: '#fff',
+                  fontWeight: 700,
+                  fontSize: 16,
+                  border: 'none',
+                  borderRadius: 8,
+                  padding: '10px 28px',
+                  boxShadow: '0 2px 8px rgba(22,163,74,0.10)',
+                  cursor: 'pointer',
+                }}
+                onClick={handleDeliverOrder}
+              >
+                {t.deliverOrder}
+              </button>
+            </div>
+          )}
           {showFinishModal && (
             <div style={{
               position: 'fixed', left: 0, top: 0, width: '100vw', height: '100vh',
@@ -456,7 +564,9 @@ export default function ResultPage() {
               </div>
             </div>
           )}
-          <button className="btn mt-8" onClick={() => router.push('/task-planner')}>{t.back}</button>
+          <div style={{display:'flex', justifyContent:'center', marginTop: 32}}>
+            <button className="btn" onClick={() => router.push('/task-planner')}>{t.back}</button>
+          </div>
         </>
       )}
     </div>

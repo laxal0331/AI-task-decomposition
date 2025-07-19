@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { orderService, taskService } from '../../lib/dbService';
+import { orderService, taskService, teamMemberService } from '../../lib/dbService';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'GET') {
@@ -20,12 +20,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           ...task,
           assigned_member_id: task.assigned_member_id || null
         }));
+
+        // 获取所有成员的最新数据
+        const allMembers = await teamMemberService.getAll() as any[];
+        
         res.status(200).json({
           order: {
             ...order,
             task_count: order.task_count || 0
           },
           tasks: tasksWithMember,
+          members: allMembers,
           selectedMembers: {} // 不再需要selectedMembers，直接使用assigned_member_id
         });
       } else {

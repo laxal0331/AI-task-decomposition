@@ -21,6 +21,7 @@ const statusStepsMap = {
 export function ProgressBar({ status, lang = 'zh' }: { status: string, lang?: 'zh' | 'en' }) {
   const statusSteps = statusStepsMap[lang] || statusStepsMap.zh;
   const currentIdx = statusSteps.findIndex(s => s.key === status);
+  
   return (
     <div style={{
       background: '#fff', borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', padding: 24, margin: '16px 0',
@@ -35,21 +36,55 @@ export function ProgressBar({ status, lang = 'zh' }: { status: string, lang?: 'z
                 fontSize: idx === currentIdx ? 20 : 14,
                 color: idx === currentIdx ? '#1890ff' : '#333',
                 marginBottom: 4,
-                transition: 'all 0.2s'
+                transition: 'all 0.3s ease-in-out'
               }}>{step.label}</span>
               <div style={{
                 width: 16, height: 16, borderRadius: '50%',
                 background: idx < currentIdx ? '#1890ff' : (idx === currentIdx ? '#1890ff' : '#eee'),
                 border: idx === currentIdx ? '3px solid #1890ff' : '2px solid #eee',
-                marginBottom: 2
+                marginBottom: 2,
+                transition: 'all 0.3s ease-in-out',
+                boxShadow: idx === currentIdx ? '0 0 8px rgba(24,144,255,0.3)' : 'none'
               }} />
             </div>
             {idx < statusSteps.length - 1 && (
-              <div style={{ flex: 1, height: 4, background: idx < currentIdx ? '#1890ff' : '#eee', margin: '0 4px', borderRadius: 2 }} />
+              <div style={{ 
+                flex: 1, 
+                height: 4, 
+                background: idx < currentIdx ? '#1890ff' : '#eee', 
+                margin: '0 4px', 
+                borderRadius: 2,
+                transition: 'all 0.3s ease-in-out'
+              }} />
             )}
           </React.Fragment>
         ))}
       </div>
+      {/* 添加实时更新指示器 */}
+      <div style={{
+        marginTop: 8,
+        fontSize: 12,
+        color: '#888',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 4
+      }}>
+        <div style={{
+          width: 6,
+          height: 6,
+          borderRadius: '50%',
+          background: '#1890ff',
+          animation: 'pulse 2s infinite'
+        }} />
+        <span>{lang === 'zh' ? '实时更新中' : 'Live Updates'}</span>
+      </div>
+      <style jsx>{`
+        @keyframes pulse {
+          0% { opacity: 1; }
+          50% { opacity: 0.5; }
+          100% { opacity: 1; }
+        }
+      `}</style>
     </div>
   );
 } 

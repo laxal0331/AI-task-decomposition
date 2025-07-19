@@ -9,6 +9,10 @@ interface Task {
   estimated_hours: number;
   status: string;
   id: string;
+  title_zh?: string;
+  title_en?: string;
+  role_zh?: string;
+  role_en?: string;
 }
 
 // 1. 定义统一的状态常量
@@ -74,92 +78,102 @@ const statusTextToCode: { [key: string]: string } = {
 
 // 文案中英对照
 const texts = {
-  zh: {
-    title: 'AI 任务拆解',
-    mode: '分配模式：',
-    fast: '最快',
-    balanced: '均衡',
-    slow: '价格最低',
-    inputPlaceholder: '请输入项目目标，例如：开发一个购物小程序',
-    submit: '提交给 AI',
-    submitting: 'AI 正在拆解中...',
-    taskList: '任务清单：',
-    task: '任务：',
-    role: '角色：',
-    est: '预计时间：',
-    recommend: '推荐成员：',
-    none: '暂无合适成员',
-    more: '更多',
-    insufficient: '时长不足者',
-    moreLabel: '更多：价格过高或速度过慢',
-    tooExpensive: '价格过高：',
-    tooSlow: '速度过慢：',
-    notEnough: '时长不足：',
-    no: '无',
-    select: '点击选择该成员',
-    detail: '点击查看成员详情',
-    detailInsufficient: '该成员时长不足，仅供参考',
-    totalCost: '总成本：',
-    totalTime: '总耗时：',
-    confirm: '确认分配',
-    confirmTip: '请为每个任务选择成员，缺人无法分配！',
-    toResult: '分配结果',
-    lang: 'English',
-    modalInputTip: '请输入完整的项目目标，例如：开发一个购物小程序',
-    modalConfirmTip: '请为每个任务选择成员，缺人无法分配！',
-    myOrders: '我的订单',
-    noOrder: '暂无订单',
-    orderId: '订单号',
-    time: '时间',
-    status: '状态',
-    taskCount: '任务数',
-    delete: '删除',
-    close: '关闭',
-    deleteConfirm: '确认删除该订单？',
-  },
-  en: {
-    title: 'AI Task Decomposition',
-    mode: 'Assignment Mode:',
-    fast: 'Fastest',
-    balanced: 'Balanced',
-    slow: 'Lowest Cost',
-    inputPlaceholder: 'Please enter your project goal, e.g. Develop a shopping mini-program',
-    submit: 'Submit to AI',
-    submitting: 'AI is decomposing...',
-    taskList: 'Task List:',
-    task: 'Task:',
-    role: 'Role:',
-    est: 'Estimated Time:',
-    recommend: 'Recommended Members:',
-    none: 'No suitable member',
-    more: 'More',
-    insufficient: 'Insufficient Hours',
-    moreLabel: 'More: Too expensive or too slow',
-    tooExpensive: 'Too expensive:',
-    tooSlow: 'Too slow:',
-    notEnough: 'Insufficient:',
-    no: 'None',
-    select: 'Click to select this member',
-    detail: 'Click to view member details',
-    detailInsufficient: 'Insufficient hours, for reference only',
-    totalCost: 'Total Cost:',
-    totalTime: 'Total Duration:',
-    confirm: 'Confirm Assignment',
-    confirmTip: 'Please select a member for each task!',
-    toResult: 'Assignment Result',
-    lang: '中文',
-    modalInputTip: 'Please enter a complete project goal, e.g. Develop a shopping mini-program',
-    modalConfirmTip: 'Please select a member for each task. Cannot assign if missing!',
-    myOrders: 'My Orders',
-    noOrder: 'No orders',
-    orderId: 'Order ID',
-    time: 'Time',
-    status: 'Status',
-    taskCount: 'Tasks',
-    delete: 'Delete',
-    close: 'Close',
-    deleteConfirm: 'Confirm Delete?',
-  }
+      zh: {
+      title: 'AI 任务拆解',
+      mode: '分配模式：',
+      fast: '最快',
+      balanced: '均衡',
+      slow: '价格最低',
+      inputPlaceholder: '请输入项目目标，例如：开发一个购物小程序',
+      submit: '提交给 AI',
+      submitting: 'AI 正在拆解中...',
+      taskList: '任务清单：',
+      task: '任务：',
+      role: '角色：',
+      est: '预计时间：',
+      recommend: '推荐开发者：',
+      none: '暂无合适开发者',
+      more: '更多',
+      insufficient: '时长不足者',
+      moreLabel: '更多：价格过高或速度过慢',
+      tooExpensive: '价格过高：',
+      tooSlow: '速度过慢：',
+      notEnough: '时长不足：',
+      no: '无',
+      others: '其他开发者：',
+      select: '点击选择该开发者',
+      detail: '点击查看开发者详情',
+      detailInsufficient: '该开发者时长不足，仅供参考',
+      totalCost: '总成本：',
+      totalTime: '总耗时：',
+      confirm: '确认分配',
+      confirmTip: '请为每个任务选择开发者，缺人无法分配！',
+      toResult: '分配结果',
+      back: '返回',
+      lang: 'English',
+      modalInputTip: '请输入完整的项目目标，例如：开发一个购物小程序',
+      modalConfirmTip: '请为每个任务选择开发者，缺人无法分配！',
+      myOrders: '我的订单',
+      noOrder: '暂无订单',
+      orderId: '订单号',
+      time: '时间',
+      status: '状态',
+      taskCount: '任务数',
+      delete: '删除',
+      close: '关闭',
+      deleteConfirm: '确认删除该订单？',
+      redecompose: '重新拆解任务',
+      viewDetails: '查看详情',
+      home: '首页',
+    },
+      en: {
+      title: 'AI Task Decomposition',
+      mode: 'Assignment Mode:',
+      fast: 'Fastest',
+      balanced: 'Balanced',
+      slow: 'Lowest Cost',
+      inputPlaceholder: 'Please enter your project goal, e.g. Develop a shopping mini-program',
+      submit: 'Submit to AI',
+      submitting: 'AI is decomposing...',
+      taskList: 'Task List:',
+      task: 'Task:',
+      role: 'Role:',
+      est: 'Estimated Time:',
+      recommend: 'Recommended Developers:',
+      none: 'No suitable developer',
+      more: 'More',
+      insufficient: 'Insufficient Hours',
+      moreLabel: 'More: Too expensive or too slow',
+      tooExpensive: 'Too expensive:',
+      tooSlow: 'Too slow:',
+      notEnough: 'Insufficient:',
+      no: 'None',
+      others: 'Other Developers:',
+      select: 'Click to select this developer',
+      detail: 'Click to view developer details',
+      detailInsufficient: 'Insufficient hours, for reference only',
+      totalCost: 'Total Cost:',
+      totalTime: 'Total Duration:',
+      confirm: 'Confirm Assignment',
+      confirmTip: 'Please select a member for each task!',
+      toResult: 'Assignment Result',
+      back: 'Back',
+      lang: '中文',
+      modalInputTip: 'Please enter a complete project goal, e.g. Develop a shopping mini-program',
+      modalConfirmTip: 'Please select a member for each task. Cannot assign if missing!',
+      myOrders: 'My Orders',
+      noOrder: 'No orders',
+      orderId: 'Order ID',
+      time: 'Time',
+      status: 'Status',
+      taskCount: 'Tasks',
+      delete: 'Delete',
+      close: 'Close',
+      deleteConfirm: 'Confirm Delete?',
+      redecompose: 'Re-decompose Task',
+      viewDetails: 'View Details',
+      home: 'Home',
+    }
 };
 
 const orderStatusI18n = {
@@ -167,20 +181,58 @@ const orderStatusI18n = {
     IN_PROGRESS: '进行中',
     COMPLETED: '已完成',
     CANCELLED: '已取消',
+    NOT_STARTED: '未开始',
+    DELIVERED: '已交付',
     // 兼容老数据
     '进行中': '进行中',
     '已完成': '已完成',
     '已取消': '已取消',
+    '未开始': '未开始',
+    '已交付': '已交付',
+    // 兼容英文状态
+    'In Progress': '进行中',
+    'Completed': '已完成',
+    'Cancelled': '已取消',
+    'Not Started': '未开始',
+    'Delivered': '已交付',
   },
   en: {
     IN_PROGRESS: 'In Progress',
     COMPLETED: 'Completed',
     CANCELLED: 'Cancelled',
+    NOT_STARTED: 'Not Started',
+    DELIVERED: 'Delivered',
     // 兼容老数据
     '进行中': 'In Progress',
     '已完成': 'Completed',
     '已取消': 'Cancelled',
+    '未开始': 'Not Started',
+    '已交付': 'Delivered',
+    // 兼容英文状态
+    'In Progress': 'In Progress',
+    'Completed': 'Completed',
+    'Cancelled': 'Cancelled',
+    'Not Started': 'Not Started',
+    'Delivered': 'Delivered',
   }
+};
+
+const statusColorMap: Record<string, string> = {
+  '已取消': '#e11d48',
+  '已交付': '#16a34a',
+  '进行中': '#eab308',
+  '未开始': '#888',
+  'IN_PROGRESS': '#eab308',
+  'CANCELLED': '#e11d48',
+  'COMPLETED': '#16a34a',
+  'NOT_STARTED': '#888',
+  'DELIVERED': '#16a34a',
+  // 兼容英文状态
+  'Cancelled': '#e11d48',
+  'Delivered': '#16a34a',
+  'In Progress': '#eab308',
+  'Not Started': '#888',
+  'Completed': '#16a34a',
 };
 
 export default function TaskPlanner() {
@@ -204,6 +256,8 @@ export default function TaskPlanner() {
   const [orders, setOrders] = useState<any[]>([]);
   const [deleteOrderId, setDeleteOrderId] = useState<string | null>(null);
   const [teamData, setTeamData] = useState<any[]>([]);
+  const { orderId } = router.query;
+  const [orderStatus, setOrderStatus] = useState<string | null>(null);
 
   const handleSubmit = async () => {
     if (input.trim().length < 6) {
@@ -216,7 +270,7 @@ export default function TaskPlanner() {
       const res = await fetch("/api/decompose", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ goal: input, assignMode }),
+        body: JSON.stringify({ goal: input, assignMode, lang }),
       });
       const data = await res.json();
       
@@ -234,8 +288,13 @@ export default function TaskPlanner() {
       }));
       setTasks(tasksWithId.map(normalizeTaskStatus));
       setSelectedMembers({});
+      // 重置已分配任务状态，确保重新拆解时有完整的成员选择
+      setAssignedTasks({});
       setDbOrderId(data.orderId);
-      if (data.members) setTeamData(data.members);
+      // 统一使用API返回的成员数据，确保数据一致性
+      if (data.members) {
+        setTeamData(data.members);
+      }
     } catch (error) {
       console.error('Submit error:', error);
       setModalMsg(`提交失败: ${String(error)}`);
@@ -406,34 +465,61 @@ export default function TaskPlanner() {
     fetchMembers();
   }, []);
 
-  return (
-    <div className="max-w-2xl mx-auto mt-10 p-6" style={{ position: 'relative' }}>
-      {/* 右上角语言切换 */}
-      <div style={{ position: 'absolute', right: 24, top: 24 }}>
-        <button className="btn" onClick={() => {
-          setLang(lang === 'zh' ? 'en' : 'zh');
-        }}>{t.lang}</button>
-      </div>
-      {/* 我的订单按钮 */}
-      <button
-        style={{
-          position: 'fixed',
-          left: 24,
-          top: 24,
-          background: '#fff',
-          color: '#1890ff',
-          border: '1px solid #e5e7eb',
-          borderRadius: 8,
-          fontWeight: 700,
-          fontSize: 16,
-          padding: '6px 18px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-          zIndex: 2000,
-          cursor: 'pointer',
-          letterSpacing: 2
-        }}
-        onClick={() => setOrdersOpen(true)}
-      >{t.myOrders}</button>
+  // 新增：拉取订单详情时初始化 input 和 assignMode
+  useEffect(() => {
+    if (orderId) {
+      (async () => {
+        const res = await fetch(`/api/orders?orderId=${orderId}`);
+        const data = await res.json();
+        if (data.tasks) {
+          setTasks(data.tasks.map(normalizeTaskStatus));
+          setDbOrderId(orderId as string);
+        }
+        if (data.order && data.order.status) {
+          setOrderStatus(data.order.status);
+        }
+        if (data.order && data.order.goal) {
+          setInput(data.order.goal);
+        }
+        if (data.order && data.order.assign_mode) {
+          setAssignMode(data.order.assign_mode);
+        }
+        // 重置已分配任务状态，确保从"我的订单"进入时显示完整的成员选择
+        setAssignedTasks({});
+        setSelectedMembers({});
+        // 统一使用API返回的成员数据，确保数据一致性
+        if (data.members) {
+          setTeamData(data.members);
+        } else {
+          // 如果没有返回成员数据，单独获取
+          const membersRes = await fetch('/api/members');
+          const membersData = await membersRes.json();
+          if (membersData.members) {
+            setTeamData(membersData.members);
+          }
+        }
+      })();
+    }
+  }, [orderId]);
+
+  // 在组件内部定义 mainContent
+  console.log("调试信息:", {
+    orderId,
+    dbOrderId,
+    orderStatus,
+    tasksLength: tasks.length,
+    input,
+    loading
+  });
+  
+  let mainContent;
+  // 使用 dbOrderId 或 orderId，优先使用 dbOrderId（新创建的订单）
+  const currentOrderId = dbOrderId || orderId;
+  
+  if (currentOrderId && orderStatus === '未开始' && tasks.length === 0) {
+    // 新建界面内容（分配模式+输入框）- 只有在没有任务数据时才显示
+    mainContent = (
+      <>
       <h1 className="text-2xl font-bold mb-4">{t.title}</h1>
       <div className="mb-6 flex items-center gap-4">
         <span className="font-bold">{t.mode}</span>
@@ -464,10 +550,52 @@ export default function TaskPlanner() {
       >
         {loading ? t.submitting : t.submit}
       </button>
-
-      {tasks.length > 0 && (
+      </>
+    );
+  } else if (currentOrderId && tasks.length > 0) {
+    // 任务分配界面内容
+    mainContent = (
+      <>
+        <h1 className="text-2xl font-bold mb-4">{t.title}</h1>
+        
+        {/* 重新拆解功能 - 对所有有任务的订单都显示 */}
+        <div className="mb-6 p-4 border rounded bg-gray-50">
+          <h3 className="text-lg font-semibold mb-3">{t.redecompose}</h3>
+          <textarea
+            className="w-full p-2 border rounded mb-4"
+            rows={3}
+            placeholder={t.inputPlaceholder}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+          />
+          <button
+            onClick={handleSubmit}
+            className="btn"
+            disabled={loading || !input}
+          >
+            {loading ? t.submitting : t.submit}
+          </button>
+        </div>
+        
         <div className="mt-6 space-y-4">
+          <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
           <h2 className="text-lg font-semibold">{t.taskList}</h2>
+            <div style={{display:'flex', alignItems:'center', gap:8}}>
+              <span className="font-bold">{t.mode}</span>
+              <label>
+                <input type="radio" name="assignMode" value="fast" checked={assignMode === 'fast'} onChange={() => setAssignMode('fast')} />
+                <span className="ml-1">{t.fast}</span>
+              </label>
+              <label>
+                <input type="radio" name="assignMode" value="balanced" checked={assignMode === 'balanced'} onChange={() => setAssignMode('balanced')} />
+                <span className="ml-1">{t.balanced}</span>
+              </label>
+              <label>
+                <input type="radio" name="assignMode" value="slow" checked={assignMode === 'slow'} onChange={() => setAssignMode('slow')} />
+                <span className="ml-1">{t.slow}</span>
+              </label>
+            </div>
+          </div>
           {tasks.map((task, i) => {
             // 统一角色名称，非主流职位自动分配到"杂项专员"
             const mainstreamRoles = [
@@ -546,8 +674,8 @@ export default function TaskPlanner() {
             });
             return (
               <div key={i} className="border p-4 rounded shadow mb-4">
-                <p><strong>{t.task}</strong>{task.title}</p>
-                <p><strong>{t.role}</strong>{task.role}</p>
+                <p><strong>{t.task}</strong>{lang === 'zh' ? (task.title_zh || task.title) : (task.title_en || task.title) || ''}</p>
+                <p><strong>{t.role}</strong>{lang === 'zh' ? (task.role_zh || task.role) : (task.role_en || task.role) || ''}</p>
                 <p><strong>{t.est}</strong>{task.estimated_hours} {lang === 'zh' ? '小时' : 'h'}</p>
                 <p><strong>{t.status}：</strong>{statusI18n[lang][task.status] || task.status}</p>
                 {/* 推荐成员名字，可选 */}
@@ -573,7 +701,7 @@ export default function TaskPlanner() {
                             style={{ cursor: 'pointer', userSelect: 'none' }}
                             title={canAssign ? t.detail : t.detailInsufficient}
                           >
-                            {member.name} <span style={{ color: '#64748b', fontWeight: 400 }}>({effectiveHours}{lang === 'zh' ? '小时' : 'h'})</span>
+                            {lang === 'zh' ? (member.name_zh || member.name) : (member.name_en || member.name)} <span style={{ color: '#64748b', fontWeight: 400 }}>({effectiveHours}{lang === 'zh' ? '小时' : 'h'})</span>
                           </span>
                         );
                       })}
@@ -608,7 +736,7 @@ export default function TaskPlanner() {
                             style={{ cursor: 'pointer', userSelect: 'none' }}
                             title={t.select}
                           >
-                            {member.name} <span style={{ color: '#64748b', fontWeight: 400 }}>({effectiveHours}{lang === 'zh' ? '小时' : 'h'})</span>
+                            {lang === 'zh' ? (member.name_zh || member.name) : (member.name_en || member.name)} <span style={{ color: '#64748b', fontWeight: 400 }}>({effectiveHours}{lang === 'zh' ? '小时' : 'h'})</span>
                           </span>
                         );
                       })}
@@ -616,7 +744,7 @@ export default function TaskPlanner() {
                     {/* 速度过慢成员 */}
                     <div style={{ marginBottom: 8 }}>
                       <strong>{t.tooSlow}</strong>
-                      {moreDevs.filter(r => r.member.hourly_rate <= 130 && r.member.speed_factor < 1.1).length === 0 ? <span className="text-gray-500">{t.no}</span> : moreDevs.filter(r => r.member.hourly_rate <= 130 && r.member.speed_factor < 1.1).map(({ member, effectiveHours }) => {
+                      {moreDevs.filter(r => r.member.speed_factor < 0.8).length === 0 ? <span className="text-gray-500">{t.no}</span> : moreDevs.filter(r => r.member.speed_factor < 0.8).map(({ member, effectiveHours }) => {
                         const isSelected = selectedId === member.id;
                         return (
                           <span
@@ -632,279 +760,395 @@ export default function TaskPlanner() {
                             style={{ cursor: 'pointer', userSelect: 'none' }}
                             title={t.select}
                           >
-                            {member.name} <span style={{ color: '#64748b', fontWeight: 400 }}>({effectiveHours}{lang === 'zh' ? '小时' : 'h'})</span>
+                            {lang === 'zh' ? (member.name_zh || member.name) : (member.name_en || member.name)} <span style={{ color: '#64748b', fontWeight: 400 }}>({effectiveHours}{lang === 'zh' ? '小时' : 'h'})</span>
                           </span>
                         );
                       })}
                     </div>
-                    {/* 时长不足成员 */}
+                    {/* 其他成员 */}
                     <div>
-                      <strong>{t.notEnough}</strong>
-                      {cannotAssign.length === 0 ? <span className="text-gray-500">{t.no}</span> : cannotAssign.map(({ member, effectiveHours }) => (
-                        <span key={member.id} className="member-badge text-danger">{member.name} <span>({effectiveHours}{lang === 'zh' ? '小时' : 'h'})</span></span>
-                      ))}
+                      <strong>{t.others}</strong>
+                      {moreDevs.filter(r => r.member.hourly_rate <= 130 && r.member.speed_factor >= 0.8).length === 0 ? <span className="text-gray-500">{t.no}</span> : moreDevs.filter(r => r.member.hourly_rate <= 130 && r.member.speed_factor >= 0.8).map(({ member, effectiveHours }) => {
+                        const isSelected = selectedId === member.id;
+                        return (
+                          <span
+                            key={member.id}
+                            className={`member-badge${isSelected ? ' selected-member' : ''}`}
+                            onClick={e => {
+                              const rect = (e.target as HTMLElement).getBoundingClientRect();
+                              setSelectedMember(member);
+                              setPopupPos({ x: rect.right + window.scrollX + 8, y: rect.top + window.scrollY });
+                              setPopupPos({ x: rect.right + window.scrollX + 8, y: rect.top + window.scrollY });
+                              setPopupTaskIdx(i);
+                              setSelectedMembers(prev => ({ ...prev, [i]: member.id }));
+                            }}
+                            style={{ cursor: 'pointer', userSelect: 'none' }}
+                            title={t.select}
+                          >
+                            {lang === 'zh' ? (member.name_zh || member.name) : (member.name_en || member.name)} <span style={{ color: '#64748b', fontWeight: 400 }}>({effectiveHours}{lang === 'zh' ? '小时' : 'h'})</span>
+                          </span>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
                 {expandedTasks[i] === 'insufficient' && (
                   <div className="p-2 border rounded bg-gray-50 mt-2">
-                    <strong>{t.insufficient}：</strong>
-                    {cannotAssign.length === 0 ? <span className="text-gray-500">{t.no}</span> : cannotAssign.map(({ member, effectiveHours }) => (
-                      <span key={member.id} className="member-badge text-danger">{member.name} <span>({effectiveHours}{lang === 'zh' ? '小时' : 'h'})</span></span>
-                    ))}
+                    {cannotAssign.length === 0 ? (
+                      <span className="text-gray-500">{t.no}</span>
+                    ) : (
+                      cannotAssign.map(({ member, effectiveHours }) => {
+                        const isSelected = selectedId === member.id;
+                        return (
+                          <span
+                            key={member.id}
+                            className={`member-badge${isSelected ? ' selected-member' : ''}`}
+                            onClick={e => {
+                              const rect = (e.target as HTMLElement).getBoundingClientRect();
+                              setSelectedMember(member);
+                              setPopupPos({ x: rect.right + window.scrollX + 8, y: rect.top + window.scrollY });
+                              setPopupTaskIdx(i);
+                              setSelectedMembers(prev => ({ ...prev, [i]: member.id }));
+                            }}
+                            style={{ cursor: 'pointer', userSelect: 'none' }}
+                            title={t.detailInsufficient}
+                          >
+                            {lang === 'zh' ? (member.name_zh || member.name) : (member.name_en || member.name)} <span style={{ color: '#64748b', fontWeight: 400 }}>({effectiveHours}{lang === 'zh' ? '小时' : 'h'})</span>
+                          </span>
+                        );
+                      })
+                    )}
                   </div>
                 )}
               </div>
             );
           })}
-          {/* 总耗时和总成本展示 */}
+          {/* 确认分配按钮 */}
           {tasks.length > 0 && (
-            <div className="mt-8 p-4 border rounded bg-gray-50">
-              <div className="mb-2 font-bold">
-                {t.totalCost}{
-                  tasks.reduce((sum, task, i) => {
-                    const devId = selectedMembers[i];
-                    if (!devId) return sum;
-                    const dev = teamData.find(d => d.id === devId);
-                    if (!dev) return sum;
-                    return sum + dev.hourly_rate * task.estimated_hours;
-                  }, 0)
-                } {lang === 'zh' ? '元' : 'CNY'}
-              </div>
-              <div className="mb-2 font-bold">
-                {t.totalTime}{
-                  (() => {
-                    // 统计每个成员的所有任务分配天数，取最大值
-                    const memberDays: { [memberId: string]: number } = {};
-                    tasks.forEach((task, i) => {
-                      const devId = selectedMembers[i];
-                      if (!devId) return;
-                      const dev = teamData.find(d => d.id === devId);
-                      if (!dev) return;
-                      // 预计工时/每天8小时，向上取整
-                      const days = Math.ceil(task.estimated_hours / 8);
-                      memberDays[devId] = (memberDays[devId] || 0) + days;
-                    });
-                    const maxDays = Math.max(...Object.values(memberDays), 0);
-                    return `${maxDays} ${lang === 'zh' ? '天' : 'days'}`;
-                  })()
-                }
-              </div>
+            <div className="mt-6 text-center" style={{ display: 'flex', justifyContent: 'center', gap: 16 }}>
               <button
                 className="btn"
-                disabled={Object.keys(selectedMembers).length !== tasks.length || Object.values(selectedMembers).some(v => !v)}
                 onClick={async () => {
-                  if (Object.keys(selectedMembers).length !== tasks.length || Object.values(selectedMembers).some(v => !v)) {
-                    setModalMsg(t.modalConfirmTip);
-                    setModalOpen(true);
-                    return;
-                  }
-                  // 统一分配 assignedTasks
-                  const newAssigned: { [memberId: string]: number[] } = {};
-                  // 分配后所有任务状态设为 '等待接受'
-                  const updatedTasks = tasks.map(task => ({ ...task, status: STATUS.PENDING, id: task.id }));
-                  updatedTasks.forEach((task, i) => {
-                    const devId = selectedMembers[i];
-                    if (!devId) return;
-                    if (!newAssigned[devId]) newAssigned[devId] = [0,0,0,0];
-                    // 简化：全部分配到第0周
-                    newAssigned[devId][0] += task.estimated_hours;
-                  });
-                  setAssignedTasks(newAssigned);
-                  // 先将分配信息写入数据库
-                  const assignments = [];
-                  for (let i = 0; i < updatedTasks.length; i++) {
-                    const task = updatedTasks[i];
-                    const memberId = selectedMembers[i];
-                    if (task.id && memberId) {
-                      assignments.push({
-                        taskId: task.id,
-                        memberId: memberId
-                      });
-                    }
-                  }
-                  console.log('Sending assignments:', assignments);
-                  console.log('selectedMembers:', selectedMembers);
-                  console.log('updatedTasks:', updatedTasks);
-                  
-                  if (assignments.length > 0) {
-                    const response = await fetch('/api/assign-tasks', {
+                  try {
+                    const assignments = Object.entries(selectedMembers).map(([taskIdx, memberId]) => ({
+                      taskId: tasks[parseInt(taskIdx)].id,
+                      memberId
+                    }));
+                    const res = await fetch('/api/assign-tasks', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ assignments, orderId: dbOrderId })
+                      body: JSON.stringify({
+                        assignments,
+                        orderId: dbOrderId
+                      })
                     });
-                    
-                    if (!response.ok) {
-                      const errorData = await response.json();
-                      throw new Error(errorData.error || '分配失败');
+                    const data = await res.json();
+                    if (data.error) {
+                      throw new Error(data.error);
                     }
-                  }
-                  // 再跳转到结果页面
                   router.push({
                     pathname: '/result',
                     query: {
                       orderId: dbOrderId
                     }
                   });
+                  } catch (error) {
+                    console.error('Assign tasks error:', error);
+                    setModalMsg(`分配失败: ${String(error)}`);
+                    setModalOpen(true);
+                  }
                 }}
               >
                 {t.confirm}
               </button>
+              <button
+                className="btn"
+                style={{ background: '#f1f5f9', color: '#222' }}
+                onClick={() => {
+                  // 清除所有状态，重新开始
+                  setTasks([]);
+                  setSelectedMembers({});
+                  setAssignedTasks({});
+                  setDbOrderId(null);
+                  setOrderStatus(null);
+                  setInput('');
+                  setLoading(false);
+                  setExpandedTasks({});
+                  // 重新导航到任务规划页面
+                  router.push('/task-planner');
+                }}
+              >
+                {t.back}
+              </button>
             </div>
           )}
         </div>
-      )}
+      </>
+    );
+  } else {
+    // 新建界面内容（无 orderId）
+    mainContent = (
+      <>
+      <h1 className="text-2xl font-bold mb-4">{t.title}</h1>
+      <div className="mb-6 flex items-center gap-4">
+        <span className="font-bold">{t.mode}</span>
+        <label>
+          <input type="radio" name="assignMode" value="fast" checked={assignMode === 'fast'} onChange={() => setAssignMode('fast')} />
+          <span className="ml-1">{t.fast}</span>
+        </label>
+        <label>
+          <input type="radio" name="assignMode" value="balanced" checked={assignMode === 'balanced'} onChange={() => setAssignMode('balanced')} />
+          <span className="ml-1">{t.balanced}</span>
+        </label>
+        <label>
+          <input type="radio" name="assignMode" value="slow" checked={assignMode === 'slow'} onChange={() => setAssignMode('slow')} />
+          <span className="ml-1">{t.slow}</span>
+        </label>
+      </div>
+      <textarea
+        className="w-full p-2 border rounded mb-4"
+        rows={3}
+        placeholder={t.inputPlaceholder}
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+      />
+      <button
+        onClick={handleSubmit}
+        className="btn"
+        disabled={loading || !input}
+      >
+        {loading ? t.submitting : t.submit}
+      </button>
+      </>
+    );
+  }
 
-      {selectedMember && popupPos && popupTaskIdx !== null && (
-        <div
+  return (
+    <div className="max-w-2xl mx-auto mt-16 p-6" style={{ position: 'relative' }}>
+      {/* 左上角语言切换 */}
+      <div style={{ position: 'fixed', left: 24, top: 24, display: 'flex', gap: 12, zIndex: 3000 }}>
+        <button
           style={{
-            position: "absolute",
-            left: popupPos.x,
-            top: popupPos.y,
-            zIndex: 1000,
-            background: "#fff",
-            borderRadius: "8px",
-            boxShadow: "0 4px 16px rgba(0,0,0,0.15)",
-            minWidth: "220px",
-            padding: "16px",
-            border: "1px solid #eee"
+            background: '#fff',
+            color: '#1890ff',
+            border: '1px solid #e5e7eb',
+            borderRadius: 8,
+            fontWeight: 700,
+            fontSize: 16,
+            padding: '6px 18px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+            zIndex: 3001,
+            cursor: 'pointer',
+            letterSpacing: 2
           }}
-          tabIndex={0}
-        >
+          onClick={() => router.push('/')}
+        >{t.home}</button>
           <button
-            style={{ position: "absolute", top: 4, right: 8, background: "none", border: "none", color: "#888", fontSize: 18, cursor: "pointer" }}
-            onClick={() => setSelectedMember(null)}
-          >×</button>
-          <h3 style={{ fontWeight: "bold", marginBottom: 8 }}>{selectedMember.name}（{selectedMember.roles.join('、')}）</h3>
-          <div>技能：{selectedMember.skills.join(', ')}</div>
-          <div>速度倍率：{selectedMember.speed_factor.toFixed(2)}（越高越快）</div>
-          <div>未来四周剩余时间：{
-            assignedTasks[selectedMember.id]
-              ? selectedMember.available_hours.map((h: number, idx: number) => h - (assignedTasks[selectedMember.id][idx] || 0)).join(' / ') + ' h'
-              : selectedMember.available_hours.join(' / ') + ' h'
-          }</div>
-          <div>合作分数：{selectedMember.experience_score}</div>
-          <div>时薪：{selectedMember.hourly_rate} 元/小时</div>
-          <div style={{marginTop:8, fontWeight:'bold', color:'#1a7f37'}}>
-            完成此任务预估花费：
-            {popupTaskIdx !== null && tasks[popupTaskIdx] ?
-              (selectedMember.hourly_rate * Math.ceil(tasks[popupTaskIdx].estimated_hours / selectedMember.speed_factor)) : 0
-            } 元
+          style={{
+            background: '#fff',
+            color: '#1890ff',
+            border: '1px solid #e5e7eb',
+            borderRadius: 8,
+            fontWeight: 700,
+            fontSize: 16,
+            padding: '6px 18px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+            zIndex: 3001,
+            cursor: 'pointer',
+            letterSpacing: 2
+          }}
+          onClick={() => setOrdersOpen(true)}
+        >{t.myOrders}</button>
           </div>
-          {(() => {
-            const taskMatch = tasks && typeof popupTaskIdx === 'number' ? (() => {
-              const mainstreamRoles = [
-                '前端工程师', '后端工程师', 'UI设计师', 'UX设计师', '测试工程师', '数据库工程师',
-                '产品经理', 'DevOps工程师', '全栈工程师'
-              ];
-              const mappedRole = mainstreamRoles.includes(tasks[popupTaskIdx].role) ? (roleMap[tasks[popupTaskIdx].role] || tasks[popupTaskIdx].role) : '杂项专员';
-              let matchResults: SmartMatchResult[] = [];
-              matchResults = smartMatchDevelopersForTask(
-                { ...tasks[popupTaskIdx], role: mappedRole },
-                teamData,
-                assignedTasks,
-                assignMode
-              );
-              return matchResults.find(r => r.member.id === selectedMember.id);
-            })() : undefined;
-            if (taskMatch && !taskMatch.canAssign) {
-              return <div style={{marginTop:10, color:'#e11d48', fontWeight:'bold'}}>该成员时长不足，仅供参考</div>;
-            }
-            return null;
-          })()}
+      
+      {/* 右上角语言切换 */}
+      <div style={{ position: 'fixed', right: 24, top: 24, zIndex: 3000 }}>
+        <button 
+          className="btn" 
+          onClick={() => setLang(lang === 'zh' ? 'en' : 'zh')}
+        >
+          {t.lang}
+        </button>
         </div>
-      )}
 
-      {/* Modal 弹窗 */}
-      {modalOpen && (
-        <div style={{
-          position: 'fixed', left: 0, top: 0, width: '100vw', height: '100vh',
-          background: 'rgba(0,0,0,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999
-        }}>
-          <div style={{
-            background: '#fff', borderRadius: 8, padding: 32, minWidth: 320, boxShadow: '0 4px 24px rgba(0,0,0,0.15)'
-          }}>
-            <div style={{ fontWeight: 600, fontSize: 18, marginBottom: 16 }}>{lang === 'zh' ? '提示' : 'Notice'}</div>
-            <div style={{ marginBottom: 24 }}>{modalMsg}</div>
-            <button className="btn" onClick={() => setModalOpen(false)}>{lang === 'zh' ? '确定' : 'OK'}</button>
-          </div>
-        </div>
-      )}
-
-      {/* 订单弹窗 */}
+      {/* 订单列表弹窗 */}
       {ordersOpen && (
         <div style={{
           position: 'fixed', left: 0, top: 0, width: '100vw', height: '100vh',
-          background: 'rgba(0,0,0,0.15)', zIndex: 3000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-        }} onClick={() => setOrdersOpen(false)}>
+          background: 'rgba(0,0,0,0.15)', zIndex: 4000, display: 'flex', alignItems: 'center', justifyContent: 'center'
+        }}>
           <div style={{
-            marginTop: 80, background: '#fff', borderRadius: 12, minWidth: 420, maxWidth: 600, boxShadow: '0 8px 32px rgba(0,0,0,0.10)', padding: 32, position: 'relative'
-          }} onClick={e => e.stopPropagation()}>
-            <div style={{fontWeight:700, fontSize:22, marginBottom:18}}>{t.myOrders}</div>
-            {orders.length === 0 ? <div style={{color:'#888'}}>{t.noOrder}</div> : (
-              <div style={{maxHeight: '60vh', overflowY: 'auto'}}>
-                {orders.map((order, idx) => (
+            background: '#fff', borderRadius: 12, minWidth: 600, maxWidth: 800, maxHeight: '80vh', boxShadow: '0 8px 32px rgba(0,0,0,0.10)', position: 'relative'
+          }}>
+            {/* 右上角叉号关闭按钮 - 固定在弹窗右上角 */}
+            <button
+              style={{
+                position: 'absolute',
+                top: 16,
+                right: 16,
+                background: 'none',
+                border: 'none',
+                fontSize: 24,
+                color: '#888',
+                cursor: 'pointer',
+                width: 32,
+                height: 32,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: '50%',
+                transition: 'background-color 0.2s',
+                zIndex: 10
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+              onClick={() => setOrdersOpen(false)}
+            >
+              ×
+            </button>
+            
+            {/* 弹窗内容区域 - 可滚动 */}
+            <div style={{
+              padding: 32,
+              maxHeight: '80vh',
+              overflow: 'auto',
+              paddingTop: 32,
+              paddingRight: 64
+            }}>
+              <div style={{fontWeight:700, fontSize:22, marginBottom:24}}>{t.myOrders}</div>
+            {orders.length === 0 ? (
+              <div style={{color:'#888', textAlign:'center', padding:'40px 0'}}>{t.noOrder}</div>
+            ) : (
+              <div style={{display:'grid', gap:16}}>
+                {orders.map((order) => (
                   <div key={order.id} style={{
-                    borderBottom: '1px solid #f1f5f9', padding: '12px 0', display: 'flex', alignItems: 'center'
-                  }}>
-                    <div
-                      style={{fontWeight:600, color:'#1890ff', minWidth:80, cursor:'pointer', textDecoration:'underline'}}
-                      onClick={() => {
-                        setOrdersOpen(false);
-                        router.push({
-                          pathname: '/result',
-                          query: {
-                            orderId: order.id
-                          }
-                        });
-                      }}
-                    >{order.id}</div>
-                    <div style={{flex:1, color:'#222', marginLeft:12}}>{new Date(order.created_at).toLocaleString()}</div>
-                    <div style={{minWidth:60, color:'#666', marginLeft:12}}>{t.taskCount}: {order.task_count}</div>
-                    <div
-                      style={{
-                        marginLeft: 12,
-                        color:
-                          order.status === 'COMPLETED'
-                            ? '#888'
-                            : order.status === 'IN_PROGRESS'
-                            ? '#16a34a'
-                            : order.status === 'CANCELLED'
-                            ? '#e11d48'
-                            : '#16a34a',
-                        fontWeight: 600,
-                      }}
-                    >
-                      {(orderStatusI18n[lang] as Record<string, string>)[String(order.status)] || String(order.status)}
+                    border: '1px solid #e5e7eb', borderRadius: 8, padding: 16,
+                    background: '#fff', transition: 'all 0.2s'
+                  }} 
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = '#fff'}>
+                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8}}>
+                      <div style={{fontWeight:600}}>{t.orderId}：{order.id}</div>
+                      <div style={{
+                        padding: '4px 12px', borderRadius: 6, fontSize: 14, fontWeight: 600,
+                        color: '#fff', background: statusColorMap[order.status] || '#888'
+                      }}>
+                        {orderStatusI18n[lang][order.status as keyof typeof orderStatusI18n[typeof lang]] || order.status}
+                      </div>
                     </div>
-                    <button
-                      style={{marginLeft:18, color:'#e11d48', background:'none', border:'none', fontWeight:600, cursor:'pointer', fontSize:15}}
-                      onClick={() => setDeleteOrderId(order.id)}
-                    >{t.delete}</button>
+                    <div style={{color:'#666', fontSize:14, marginBottom:8}}>{t.time}：{new Date(parseInt(order.id)).toLocaleString()}</div>
+                    <div style={{color:'#666', fontSize:14, marginBottom:12}}>{t.taskCount}：{order.task_count || 0}</div>
+                    
+                    {/* 操作按钮 */}
+                    <div style={{display:'flex', gap:8}}>
+                      <button
+                        style={{
+                          background: '#1890ff',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: 6,
+                          padding: '6px 12px',
+                          fontSize: 14,
+                          cursor: 'pointer',
+                          flex: 1
+                        }}
+                        onClick={async () => {
+                        setOrdersOpen(false);
+                          const res = await fetch(`/api/orders?orderId=${order.id}`);
+                          const data = await res.json();
+                          const status = data.order?.status;
+                          if (status === '未开始' || status === 'Not Started') {
+                            router.push({ pathname: '/task-planner', query: { orderId: order.id } });
+                          } else {
+                            router.push({ pathname: '/result', query: { orderId: order.id } });
+                          }
+                        }}
+                      >
+                        {t.viewDetails}
+                      </button>
+                      <button
+                      style={{
+                          background: '#e11d48',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: 6,
+                          padding: '6px 12px',
+                          fontSize: 14,
+                          cursor: 'pointer'
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteOrderId(order.id);
+                        }}
+                      >
+                        {t.delete}
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
             )}
-            <button style={{position:'absolute',top:18,right:24,background:'none',border:'none',fontSize:22,color:'#888',cursor:'pointer'}} onClick={()=>setOrdersOpen(false)}>{t.close} ×</button>
+            </div>
           </div>
         </div>
       )}
 
+      {/* 删除确认弹窗 */}
       {deleteOrderId && (
         <div style={{
           position: 'fixed', left: 0, top: 0, width: '100vw', height: '100vh',
           background: 'rgba(0,0,0,0.15)', zIndex: 4000, display: 'flex', alignItems: 'center', justifyContent: 'center'
         }}>
           <div style={{
-            background: '#fff', borderRadius: 16, minWidth: 320, maxWidth: 340, boxShadow: '0 8px 32px rgba(0,0,0,0.10)', padding: '36px 0 32px 0', position: 'relative', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
+            background: '#fff', borderRadius: 12, minWidth: 320, boxShadow: '0 8px 32px rgba(0,0,0,0.10)', padding: 32, position: 'relative', textAlign: 'center'
           }}>
-            <button style={{position:'absolute',top:14,right:18,background:'none',border:'none',fontSize:22,color:'#888',cursor:'pointer',lineHeight:1}} onClick={()=>setDeleteOrderId(null)}>×</button>
-            <button style={{background:'#e11d48',color:'#fff',border:'none',borderRadius:10,fontWeight:700,fontSize:18,padding:'14px 48px',cursor:'pointer',marginTop:10,boxShadow:'0 2px 8px rgba(225,29,72,0.08)'}} onClick={() => {
-              handleDeleteOrder(deleteOrderId);
-            }}>{t.delete}</button>
+            <div style={{fontWeight:700, fontSize:22, marginBottom:18, paddingRight: 48}}>{t.deleteConfirm}</div>
+            <div style={{display:'flex', justifyContent:'center', gap:24}}>
+              <button style={{
+                background:'#e11d48',color:'#fff',border:'none',borderRadius:8,fontWeight:700,fontSize:16,padding:'8px 28px',cursor:'pointer'
+              }} onClick={() => handleDeleteOrder(deleteOrderId)}>{t.delete}</button>
+              <button style={{
+                background:'#f1f5f9',color:'#222',border:'none',borderRadius:8,fontWeight:600,fontSize:16,padding:'8px 28px',cursor:'pointer'
+              }} onClick={() => setDeleteOrderId(null)}>{t.close}</button>
+            </div>
           </div>
         </div>
       )}
+
+      {/* 成员详情弹窗 */}
+      {selectedMember && popupPos && (
+        <div style={{
+          position: 'fixed', left: popupPos.x, top: popupPos.y, zIndex: 5000,
+          background: '#fff', borderRadius: 8, boxShadow: '0 4px 16px rgba(0,0,0,0.15)', padding: 16, minWidth: 200
+        }}>
+          <div style={{fontWeight:600, marginBottom:8}}>{selectedMember.name}</div>
+          <div style={{fontSize:14, color:'#666', marginBottom:4}}>{lang === 'zh' ? '角色：' : 'Role: '}{selectedMember.roles.join(', ')}</div>
+          <div style={{fontSize:14, color:'#666', marginBottom:4}}>{lang === 'zh' ? '时薪：' : 'Hourly Rate: '}{selectedMember.hourly_rate} {lang === 'zh' ? '元' : 'CNY'}</div>
+          <div style={{fontSize:14, color:'#666', marginBottom:4}}>{lang === 'zh' ? '速度倍率：' : 'Speed Factor: '}{selectedMember.speed_factor}</div>
+          <div style={{fontSize:14, color:'#666'}}>{lang === 'zh' ? '经验分数：' : 'Experience: '}{selectedMember.experience_score}</div>
+        </div>
+      )}
+
+      {/* 确认弹窗 */}
+      {modalOpen && (
+        <div style={{
+          position: 'fixed', left: 0, top: 0, width: '100vw', height: '100vh',
+          background: 'rgba(0,0,0,0.15)', zIndex: 4000, display: 'flex', alignItems: 'center', justifyContent: 'center'
+        }}>
+          <div style={{
+            background: '#fff', borderRadius: 12, minWidth: 320, boxShadow: '0 8px 32px rgba(0,0,0,0.10)', padding: 32, position: 'relative', textAlign: 'center'
+          }}>
+            <div style={{fontWeight:700, fontSize:22, marginBottom:18, paddingRight: 48}}>{modalMsg}</div>
+            <div style={{display:'flex', justifyContent:'center', gap:24}}>
+              <button style={{
+                background:'#1890ff',color:'#fff',border:'none',borderRadius:8,fontWeight:700,fontSize:16,padding:'8px 28px',cursor:'pointer'
+              }} onClick={() => setModalOpen(false)}>{t.confirm}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {mainContent}
     </div>
   );
 }

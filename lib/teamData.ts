@@ -1,6 +1,8 @@
 export type TeamMember = {
   id: string;
   name: string;
+  name_zh?: string;
+  name_en?: string;
   roles: string[];
   skills: string[];
   available_hours: number[]; // 未来四周每周可用工时
@@ -68,6 +70,8 @@ Object.entries(roleDistribution).forEach(([role, count]) => {
     teamData.push({
       id: (memberIdx++).toString(),
       name: `成员${memberIdx}`,
+      name_zh: `成员${memberIdx}`,
+      name_en: `Member${memberIdx}`,
       roles,
       skills,
       available_hours,
@@ -96,6 +100,8 @@ allRoles.forEach(role => {
     teamData.push({
       id: (nextId++).toString(),
       name: `成员${nextId}`,
+      name_zh: `成员${nextId}`,
+      name_en: `Member${nextId}`,
       roles: [role],
       skills,
       available_hours,
@@ -113,6 +119,8 @@ Object.keys(roleDistribution).forEach(role => {
   teamData.push({
     id: (teamData.length + 1).toString(),
     name: `全可用${role}`,
+    name_zh: `全可用${role}`,
+    name_en: `Fully Available ${role}`,
     roles: [role],
     skills: randomFromArray(allSkills, 4),
     available_hours: [40, 40, 40, 40],
@@ -124,6 +132,8 @@ Object.keys(roleDistribution).forEach(role => {
   teamData.push({
     id: (teamData.length + 1).toString(),
     name: `全占用${role}`,
+    name_zh: `全占用${role}`,
+    name_en: `Fully Occupied ${role}`,
     roles: [role],
     skills: randomFromArray(allSkills, 4),
     available_hours: [0, 0, 0, 0],
