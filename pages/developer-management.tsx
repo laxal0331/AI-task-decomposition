@@ -345,6 +345,28 @@ export default function DeveloperManagement() {
 
   return (
     <div className="max-w-4xl mx-auto mt-16 p-6" style={{ position: 'relative' }}>
+      {/* 左上角首页按钮 */}
+      <div style={{ position: 'fixed', left: 24, top: 24, display: 'flex', gap: 12, zIndex: 3000 }}>
+        <button
+          style={{
+            background: '#fff',
+            color: '#1890ff',
+            border: '1px solid #e5e7eb',
+            borderRadius: 8,
+            fontWeight: 700,
+            fontSize: 16,
+            padding: '6px 18px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+            zIndex: 3001,
+            cursor: 'pointer',
+            letterSpacing: 2
+          }}
+          onClick={() => router.push('/')}
+        >
+          {lang === 'zh' ? '首页' : 'Home'}
+        </button>
+      </div>
+      
       {/* 右上角语言切换 */}
       <div style={{ position: 'fixed', right: 24, top: 24, zIndex: 3000 }}>
         <button 
@@ -494,25 +516,47 @@ export default function DeveloperManagement() {
                       }}>
                         {(() => {
                           // 处理角色显示
+                          let roleName = '';
                           if (Array.isArray(developer.roles)) {
-                            return developer.roles[0] || '未知角色';
+                            roleName = developer.roles[0] || '';
                           } else if (typeof developer.roles === 'string') {
                             try {
                               const parsedRoles = JSON.parse(developer.roles);
-                              return Array.isArray(parsedRoles) ? parsedRoles[0] : developer.roles;
+                              roleName = Array.isArray(parsedRoles) ? parsedRoles[0] : developer.roles;
                             } catch (e) {
-                              return developer.roles || '未知角色';
+                              roleName = developer.roles || '';
                             }
                           } else {
-                            return developer.roles || '未知角色';
+                            roleName = developer.roles || '';
                           }
+                          
+                          // 如果角色名称为空，显示默认文本
+                          if (!roleName) {
+                            return lang === 'zh' ? '未知角色' : 'Unknown Role';
+                          }
+                          
+                          // 角色名称映射
+                          const roleMap = {
+                            '前端工程师': 'Frontend Engineer',
+                            '后端工程师': 'Backend Engineer',
+                            'UI设计师': 'UI Designer',
+                            'UX设计师': 'UX Designer',
+                            '测试工程师': 'Test Engineer',
+                            '数据库工程师': 'Database Engineer',
+                            '产品经理': 'Product Manager',
+                            'DevOps工程师': 'DevOps Engineer',
+                            '全栈工程师': 'Full Stack Engineer',
+                            '杂项专员': 'General Specialist'
+                          };
+                          
+                          return lang === 'zh' ? roleName : (roleMap[roleName as keyof typeof roleMap] || roleName);
                         })()}
                       </span>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, fontSize: 14, color: '#666' }}>
-                      <div>时薪: ¥{developer.hourly_rate}/小时</div>
-                      <div>速度倍率: {developer.speed_factor}x</div>
-                      <div>可用工时: {(() => {
+                      <div>{lang === 'zh' ? '时薪' : 'Hourly Rate'}: ¥{developer.hourly_rate}/{lang === 'zh' ? '小时' : 'hour'}</div>
+                      <div>{lang === 'zh' ? '速度倍率' : 'Speed Factor'}: {developer.speed_factor}x</div>
+                      <div>{lang === 'zh' ? '可用工时' : 'Available Hours'}: {(() => {
                         // 处理可用工时显示
                         if (Array.isArray(developer.available_hours)) {
                           return developer.available_hours.join('/');
@@ -524,7 +568,7 @@ export default function DeveloperManagement() {
                         }
                       })()}</div>
                       {developer.skills && developer.skills.length > 0 && (
-                        <div>技能: {developer.skills.join(', ')}</div>
+                        <div>{lang === 'zh' ? '技能' : 'Skills'}: {developer.skills.join(', ')}</div>
                       )}
                     </div>
                   </div>
