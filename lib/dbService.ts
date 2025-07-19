@@ -309,12 +309,37 @@ export const teamMemberService = {
     const connection = await pool.getConnection();
     try {
       const [rows] = await connection.query('SELECT * FROM team_members');
-      return (rows as any[]).map(row => ({
-        ...row,
-        roles: JSON.parse(row.roles),
-        skills: JSON.parse(row.skills),
-        available_hours: JSON.parse(row.available_hours)
-      }));
+      return (rows as any[]).map(row => {
+        try {
+          let availableHours = [];
+          try {
+            // 尝试解析为JSON数组
+            availableHours = JSON.parse(row.available_hours || '[]');
+          } catch (hoursError) {
+            // 如果解析失败，尝试解析为字符串格式
+            if (typeof row.available_hours === 'string' && row.available_hours.includes('/')) {
+              availableHours = row.available_hours.split('/').map((h: string) => parseInt(h) || 0);
+            } else {
+              availableHours = [40, 35, 30, 25]; // 默认值
+            }
+          }
+          
+          return {
+            ...row,
+            roles: JSON.parse(row.roles || '[]'),
+            skills: JSON.parse(row.skills || '[]'),
+            available_hours: availableHours
+          };
+        } catch (parseError) {
+          console.error('解析成员数据失败:', parseError);
+          return {
+            ...row,
+            roles: [],
+            skills: [],
+            available_hours: [40, 35, 30, 25]
+          };
+        }
+      });
     } finally {
       connection.release();
     }

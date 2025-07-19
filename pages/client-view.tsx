@@ -250,6 +250,27 @@ export default function ClientView() {
       </div>
 
       <h1 className="text-2xl font-bold mb-6">{t.title}</h1>
+      
+      {/* 管理开发者按钮 */}
+      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'flex-end' }}>
+        <button
+          style={{
+            background: '#1890ff',
+            color: '#fff',
+            border: 'none',
+            borderRadius: 8,
+            fontWeight: 600,
+            fontSize: 14,
+            padding: '8px 16px',
+            cursor: 'pointer',
+            boxShadow: '0 2px 8px rgba(24,144,255,0.15)'
+          }}
+          onClick={() => router.push('/developer-management')}
+        >
+          {lang === 'zh' ? '管理开发者' : 'Manage Developers'}
+        </button>
+      </div>
+      
       <div className="mb-6 flex items-center gap-2">
         <span>{t.memberId}</span>
         <input value={memberId} onChange={e => setMemberId(e.target.value)} className="border rounded px-2 py-1" style={{width: 100}} placeholder={t.memberIdPlaceholder} />

@@ -455,6 +455,33 @@ export default function TaskPlanner() {
     status: statusTextToCode[task.status] || task.status
   });
 
+  // 计算预计完成时间
+  const calculateEstimatedCompletionTime = () => {
+    if (tasks.length === 0) return null;
+    
+    // 计算总工时
+    const totalHours = tasks.reduce((sum, task) => sum + task.estimated_hours, 0);
+    
+    // 假设每天工作8小时，每周工作5天
+    const hoursPerDay = 8;
+    const daysPerWeek = 5;
+    const hoursPerWeek = hoursPerDay * daysPerWeek; // 40小时/周
+    
+    // 计算需要的周数
+    const weeksNeeded = Math.ceil(totalHours / hoursPerWeek);
+    
+    // 计算天数
+    const daysNeeded = Math.ceil(totalHours / hoursPerDay);
+    
+    return {
+      totalHours,
+      weeksNeeded,
+      daysNeeded,
+      hoursPerDay,
+      hoursPerWeek
+    };
+  };
+
   // 拉取团队成员数据
   useEffect(() => {
     async function fetchMembers() {
@@ -823,6 +850,95 @@ export default function TaskPlanner() {
               </div>
             );
           })}
+          
+          {/* 预计完成时间显示 */}
+          {tasks.length > 0 && (() => {
+            const completionInfo = calculateEstimatedCompletionTime();
+            if (!completionInfo) return null;
+            
+            return (
+              <div style={{
+                marginTop: 24,
+                padding: 16,
+                background: '#f8fafc',
+                borderRadius: 12,
+                border: '1px solid #e2e8f0',
+                textAlign: 'center'
+              }}>
+                <div style={{
+                  fontSize: 18,
+                  fontWeight: 600,
+                  color: '#1e293b',
+                  marginBottom: 8
+                }}>
+                  {lang === 'zh' ? '📅 预计完成时间' : '📅 Estimated Completion Time'}
+                </div>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  gap: 24,
+                  flexWrap: 'wrap'
+                }}>
+                  <div style={{
+                    background: '#fff',
+                    padding: '12px 16px',
+                    borderRadius: 8,
+                    border: '1px solid #e2e8f0',
+                    minWidth: 120
+                  }}>
+                    <div style={{ fontSize: 14, color: '#64748b', marginBottom: 4 }}>
+                      {lang === 'zh' ? '总工时' : 'Total Hours'}
+                    </div>
+                    <div style={{ fontSize: 20, fontWeight: 600, color: '#1e293b' }}>
+                      {completionInfo.totalHours} {lang === 'zh' ? '小时' : 'h'}
+                    </div>
+                  </div>
+                  
+                  <div style={{
+                    background: '#fff',
+                    padding: '12px 16px',
+                    borderRadius: 8,
+                    border: '1px solid #e2e8f0',
+                    minWidth: 120
+                  }}>
+                    <div style={{ fontSize: 14, color: '#64748b', marginBottom: 4 }}>
+                      {lang === 'zh' ? '预计天数' : 'Estimated Days'}
+                    </div>
+                    <div style={{ fontSize: 20, fontWeight: 600, color: '#1e293b' }}>
+                      {completionInfo.daysNeeded} {lang === 'zh' ? '天' : 'days'}
+                    </div>
+                  </div>
+                  
+                  <div style={{
+                    background: '#fff',
+                    padding: '12px 16px',
+                    borderRadius: 8,
+                    border: '1px solid #e2e8f0',
+                    minWidth: 120
+                  }}>
+                    <div style={{ fontSize: 14, color: '#64748b', marginBottom: 4 }}>
+                      {lang === 'zh' ? '预计周数' : 'Estimated Weeks'}
+                    </div>
+                    <div style={{ fontSize: 20, fontWeight: 600, color: '#1e293b' }}>
+                      {completionInfo.weeksNeeded} {lang === 'zh' ? '周' : 'weeks'}
+                    </div>
+                  </div>
+                </div>
+                <div style={{
+                  fontSize: 12,
+                  color: '#64748b',
+                  marginTop: 12,
+                  fontStyle: 'italic'
+                }}>
+                  {lang === 'zh' 
+                    ? `* 基于每天${completionInfo.hoursPerDay}小时，每周${completionInfo.hoursPerWeek}小时的工作量计算`
+                    : `* Based on ${completionInfo.hoursPerDay}h/day, ${completionInfo.hoursPerWeek}h/week workload`
+                  }
+                </div>
+              </div>
+            );
+          })()}
+          
           {/* 确认分配按钮 */}
           {tasks.length > 0 && (
             <div className="mt-6 text-center" style={{ display: 'flex', justifyContent: 'center', gap: 16 }}>
@@ -959,6 +1075,7 @@ export default function TaskPlanner() {
           }}
           onClick={() => setOrdersOpen(true)}
         >{t.myOrders}</button>
+
           </div>
       
       {/* 右上角语言切换 */}
