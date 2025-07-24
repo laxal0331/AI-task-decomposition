@@ -97,6 +97,32 @@ export default function Home() {
   const [visible, setVisible] = useState([false, false, false, false, false]);
   const [hoveredIndex, setHoveredIndex] = useState<number|null>(null);
   const [flippedIndex, setFlippedIndex] = useState<number|null>(null);
+  // 吸底提示字滚动逻辑
+  const [tipFixed, setTipFixed] = useState(true);
+  const [tipAbsTop, setTipAbsTop] = useState<number | undefined>(undefined);
+  const cardsRowRef = useRef<HTMLDivElement>(null);
+  const tipRef = useRef<HTMLDivElement>(null);
+  // 卡片点击直接跳转
+  const handleCardClick = (type: 'task' | 'client') => {
+    router.push(type === 'task' ? '/task-planner' : '/client-view');
+  };
+  useEffect(() => {
+    const onScroll = () => {
+      const cards = cardsRowRef.current;
+      if (!cards) return;
+      const cardsRect = cards.getBoundingClientRect();
+      if (cardsRect.bottom < window.innerHeight) {
+        setTipFixed(false);
+        setTipAbsTop(window.scrollY + cardsRect.bottom + 24); // 24px间距
+      } else {
+        setTipFixed(true);
+        setTipAbsTop(undefined);
+      }
+    };
+    window.addEventListener('scroll', onScroll);
+    onScroll();
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -190,7 +216,9 @@ export default function Home() {
                 lineHeight: 1.1,
               }}
             >
-              {lang === 'zh' ? (<><span>AI</span><br/><span>远程项目管理</span></>) : t.title}
+              {lang === 'zh'
+                ? (<><span>AI</span><br/><span>远程项目管理</span></>)
+                : (<span className="en-title">AI Remote Project Management</span>)}
             </h1>
             <p className="text-xl text-gray-600 dark:text-gray-300 main-subtitle"
               style={{
@@ -210,130 +238,84 @@ export default function Home() {
           <div style={{ width: '96vw', maxWidth: 1400, height: 64, margin: '220px auto 0 auto', background: 'none', border: 'none', boxShadow: 'none', position: 'relative', zIndex: 1, marginBottom: 64 }} />
 
           {/* 三层结构：背景 -> 长方形 -> 卡片 */}
-          <div style={{
-            width: '96vw',
-            maxWidth: 1400,
-            margin: '0 auto 0 auto',
-            height: 320,
-            position: 'relative',
-            marginBottom: 64,
-          }}>
-            {/* 中间大长方形背景，absolute 居中 */}
+          <div ref={cardsRowRef} className="cards-row" style={{ margin: '0 auto', width: '100%', maxWidth: 1200, padding: '0 16px' }}>
             <div
-              className="middle-bg-rect"
+              className="card-responsive card-hover-blue"
+              onClick={() => handleCardClick('task')}
               style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                height: '100%',
-                borderRadius: 56,
-                background: 'linear-gradient(120deg, rgba(30,41,59,0.82) 60%, rgba(80,120,255,0.32) 100%)',
-                boxShadow: '0 8px 48px 0 rgba(30,41,59,0.18), 0 2px 24px 0 rgba(80,120,255,0.10)',
-                zIndex: 1,
-                backdropFilter: 'blur(8px) saturate(1.2)',
-                border: '1.5px solid rgba(80,120,255,0.18)',
-              }}
-            />
-            {/* 卡片层，z-index:2，relative */}
-            <div
-              className="cards-row-responsive"
-              style={{
-                width: '100%',
-                height: '100%',
-                position: 'relative',
-                zIndex: 2,
+                background: '#dbeafe',
+                borderRadius: 32,
+                boxShadow: '0 8px 32px 0 rgba(30,41,59,0.10)',
                 display: 'flex',
+                flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: 48,
-                background: 'none',
-                boxShadow: 'none',
-                backdropFilter: 'none',
-                border: 'none',
-                padding: 0,
+                padding: 'clamp(24px, 5vw, 48px)',
+                minHeight: 180,
+                width: '100%',
+                transition: 'background 0.3s, box-shadow 0.3s',
               }}
             >
-              {/* 左侧卡片内容 */}
-              <div
-                className="card-responsive card-hover-blue"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 24,
-                  background: '#dbeafe',
-                  border: 'none',
-                  boxShadow: '0 8px 32px 0 rgba(30,41,59,0.10)',
-                  borderRadius: 48,
-                  minHeight: 180,
-                  cursor: 'pointer',
-                  transition: 'background 0.3s, box-shadow 0.3s',
-                  width: '100%',
-                  maxWidth: 600,
-                  margin: '0 18px',
-                }}
-                onClick={() => navigateTo('/task-planner')}
-              >
-                <div style={{flex: '0 0 120px', display:'flex', alignItems:'center', justifyContent:'center', height:'100%'}}>
-                  <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
-                    <rect x="16" y="28" width="40" height="16" rx="8" fill="#3ecf8e"/>
-                    <circle cx="40" cy="56" r="12" fill="#3ecf8e"/>
-                  </svg>
-                </div>
-                <div style={{display:'flex', flexDirection:'column', justifyContent:'center'}}>
-                  <h3 style={{fontSize: 22, fontWeight: 800, color: '#1e293b', marginBottom: 12, lineHeight: 1.1}}>{t.taskPlanner}</h3>
-                  <p style={{fontSize: 'clamp(12px, 1.2vw, 18px)', color: '#3b4a5a', opacity: 0.98, fontWeight: 500}}>{t.taskPlannerDesc}</p>
-                </div>
-              </div>
-              {/* 右侧卡片内容 */}
-              <div
-                className="card-responsive card-hover-blue"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 24,
-                  background: '#dbeafe',
-                  border: 'none',
-                  boxShadow: '0 8px 32px 0 rgba(30,41,59,0.10)',
-                  borderRadius: 48,
-                  minHeight: 180,
-                  cursor: 'pointer',
-                  transition: 'background 0.3s, box-shadow 0.3s',
-                  width: '100%',
-                  maxWidth: 600,
-                  margin: '0 18px',
-                }}
-                onClick={() => navigateTo('/client-view')}
-              >
-                <div style={{flex: '0 0 120px', display:'flex', alignItems:'center', justifyContent:'center', height:'100%'}}>
-                  <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
-                    <circle cx="40" cy="40" r="32" fill="#3ecf8e" opacity="0.12"/>
-                    <path d="M40 32a8 8 0 110 16 8 8 0 010-16zm0 18c-8 0-16 4-16 8v4h32v-4c0-4-8-8-16-8z" fill="#3ecf8e"/>
-                  </svg>
-                </div>
-                <div style={{display:'flex', flexDirection:'column', justifyContent:'center'}}>
-                  <h3 style={{fontSize: 22, fontWeight: 800, color: '#1e293b', marginBottom: 12, lineHeight: 1.1}}>{t.clientView}</h3>
-                  <p style={{fontSize: 'clamp(12px, 1.2vw, 18px)', color: '#3b4a5a', opacity: 0.98, fontWeight: 500}}>{t.clientViewDesc}</p>
-                </div>
-              </div>
+              <svg width="56" height="56" viewBox="0 0 80 80" fill="none" style={{ marginBottom: 16 }}>
+                <rect x="16" y="28" width="40" height="16" rx="8" fill="#3ecf8e"/>
+                <circle cx="40" cy="56" r="12" fill="#3ecf8e"/>
+              </svg>
+              <h3 style={{ fontSize: 'clamp(18px, 3vw, 24px)', fontWeight: 700, color: '#1e293b', marginBottom: 8 }}>{t.taskPlanner}</h3>
+              <p style={{ fontSize: 'clamp(12px, 2vw, 16px)', color: '#3b4a5a', opacity: 0.98, fontWeight: 500, textAlign: 'center' }}>{t.taskPlannerDesc}</p>
+            </div>
+            <div
+              className="card-responsive card-hover-blue"
+              onClick={() => handleCardClick('client')}
+              style={{
+                background: '#dbeafe',
+                borderRadius: 32,
+                boxShadow: '0 8px 32px 0 rgba(30,41,59,0.10)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: 'clamp(24px, 5vw, 48px)',
+                minHeight: 180,
+                width: '100%',
+                transition: 'background 0.3s, box-shadow 0.3s',
+              }}
+            >
+              <svg width="56" height="56" viewBox="0 0 80 80" fill="none" style={{ marginBottom: 16 }}>
+                <circle cx="40" cy="40" r="32" fill="#3ecf8e" opacity="0.12"/>
+                <path d="M40 32a8 8 0 110 16 8 8 0 010-16zm0 18c-8 0-16 4-16 8v4h32v-4c0-4-8-8-16-8z" fill="#3ecf8e"/>
+              </svg>
+              <h3 style={{ fontSize: 'clamp(18px, 3vw, 24px)', fontWeight: 700, color: '#1e293b', marginBottom: 8 }}>{t.clientView}</h3>
+              <p style={{ fontSize: 'clamp(12px, 2vw, 16px)', color: '#3b4a5a', opacity: 0.98, fontWeight: 500, textAlign: 'center' }}>{t.clientViewDesc}</p>
             </div>
           </div>
           {/* 下滑提示文字 */}
           <div
             id="scroll-tip"
+            ref={tipRef}
             className="scroll-tip-responsive"
-            style={{ marginTop: 80 }}
-            onClick={() => {
-              const section = document.querySelector('section');
-              if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            style={{
+              position: tipFixed ? 'fixed' : 'absolute',
+              left: 0,
+              right: 0,
+              bottom: tipFixed ? 0 : undefined,
+              top: !tipFixed && tipAbsTop !== undefined ? tipAbsTop : undefined,
+              margin: '0 auto',
+              textAlign: 'center',
+              zIndex: 10,
+              width: 'auto',
+              maxWidth: 1200,
             }}
           >
-            {t.scrollTip}
-            <br />
-            <span style={{ display: 'inline-block', marginTop: 6 }}>
-              <svg width="38" height="24" viewBox="0 0 24 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M6 6l6 6 6-6" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
+            <span
+              style={{ display: 'inline-block', padding: '6px 18px', borderRadius: 8 }}
+            >
+              {t.scrollTip}
+              <br />
+              <span style={{ display: 'inline-block', marginTop: 6 }}>
+                <svg width="38" height="24" viewBox="0 0 24 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M6 6l6 6 6-6" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </span>
             </span>
           </div>
         </main>
@@ -568,10 +550,13 @@ export default function Home() {
           font-weight: 700;
           text-shadow: 0 4px 16px rgba(0,0,0,0.18);
           user-select: none;
-          cursor: pointer;
+          cursor: default;
           line-height: 1.2;
           display: inline-block;
           z-index: 10;
+          width: auto;
+          max-width: 400px;
+          pointer-events: none;
         }
         .main-title-wrap {
           position: absolute;
@@ -615,6 +600,9 @@ export default function Home() {
             margin: 32px auto 0 auto !important;
             display: block !important;
             font-size: 16px !important;
+            width: auto !important;
+            max-width: 90vw !important;
+            pointer-events: none !important;
           }
           .main-title {
             font-size: clamp(20px, 6vw, 32px) !important;
@@ -622,27 +610,95 @@ export default function Home() {
           .main-subtitle {
             font-size: 16px !important;
           }
-          .middle-bg-rect {
-            height: 180px !important;
-            border-radius: 18px !important;
+          .cards-row-responsive {
+            flex-direction: column !important;
+            gap: 18px !important;
+            align-items: center !important;
+            justify-content: center !important;
           }
-        }
-        .middle-bg-rect {
-          pointer-events: none;
+          .card-responsive {
+            width: 100% !important;
+            max-width: none !important;
+            margin: 0 !important;
+            box-sizing: border-box !important;
+          }
         }
         .cards-row-responsive {
           justify-content: center;
           align-items: center;
-          gap: 48px;
+          gap: 24px;
         }
         .card-responsive {
-          width: 100%;
-          max-width: 600px;
-          margin: 0 18px;
-          min-width: 0;
+          width: clamp(120px, 60vw, 520px);
+          min-width: 120px;
+          max-width: 100%;
+          margin-left: 0 !important;
+          margin-right: auto !important;
+          box-sizing: border-box;
+          transition: width 0.3s;
+        }
+        @media (max-width: 700px) {
+          .cards-row {
+            justify-content: flex-start !important;
+          }
+          .card-responsive {
+            margin-left: 0 !important;
+            margin-right: auto !important;
+          }
         }
         .card-hover-blue:hover {
           background: #93c5fd !important;
+        }
+        .feature-row-grid {
+          width: 100vw;
+          max-width: 600px;
+          margin: 0 auto;
+          padding-left: 12px;
+          padding-right: 12px;
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 24px;
+          box-sizing: border-box;
+        }
+        .card-responsive {
+          width: 100%;
+          margin: 0;
+          box-sizing: border-box;
+        }
+        .cards-row {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(180px, 1fr));
+          gap: 48px;
+          width: 100%;
+          max-width: 1200px;
+          margin: 0 auto;
+        }
+        @media (max-width: 1100px) {
+          .cards-row {
+            grid-template-columns: 1fr;
+            gap: 24px;
+          }
+        }
+        .card-responsive {
+          width: 100%;
+          min-width: 0;
+          margin: 0;
+          box-sizing: border-box;
+        }
+        @media (max-width: 414px) {
+          .main-title-wrap {
+            margin-top: 80px !important;
+          }
+        }
+        .en-title {
+          white-space: nowrap;
+          display: inline-block;
+        }
+        @media (max-width: 550px) {
+          .en-title {
+            white-space: normal;
+            display: block;
+          }
         }
       `}</style>
     </div>

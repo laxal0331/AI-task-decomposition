@@ -344,7 +344,9 @@ export default function DeveloperManagement() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto mt-16 p-6" style={{ position: 'relative' }}>
+    <div style={{ position: 'relative', minHeight: '100vh', width: '100vw', height: '100vh', overflow: 'auto', backgroundImage: 'url(/bg-client.jpg)', backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }}>
+      <div style={{ position: 'fixed', left: 0, top: 0, width: '100vw', height: '100vh', background: 'rgba(16,24,40,0.32)', zIndex: 0, pointerEvents: 'none' }} />
+      <div className="max-w-4xl mx-auto mt-16 p-6" style={{ position: 'relative', zIndex: 1 }}>
       {/* 左上角首页按钮 */}
       <div style={{ position: 'fixed', left: 24, top: 24, display: 'flex', gap: 12, zIndex: 3000 }}>
         <button
@@ -377,13 +379,12 @@ export default function DeveloperManagement() {
         </button>
       </div>
 
-      <h1 className="text-3xl font-bold mb-8">{t.title}</h1>
+      <h1 className="text-3xl font-bold mb-8" style={{ color: '#fff', textShadow: '0 2px 8px rgba(0,0,0,0.18)' }}>{t.title}</h1>
       
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, color: '#fff', textShadow: '0 1px 4px rgba(0,0,0,0.18)' }}>
         <button
           className="btn"
-          style={{ background: '#f1f5f9', color: '#222', borderRadius: 8, fontWeight: 600, padding: '8px 16px' }}
-          onClick={() => router.push('/task-planner')}
+          onClick={() => router.push('/client-view')}
         >
           {t.back}
         </button>
@@ -403,10 +404,10 @@ export default function DeveloperManagement() {
 
       {/* 开发者列表 */}
       <div style={{ marginBottom: 32 }}>
-        <h2 className="text-xl font-semibold mb-4">{t.developerList}</h2>
+        <h2 className="text-xl font-semibold mb-4" style={{ color: '#fff', textShadow: '0 1px 4px rgba(0,0,0,0.18)' }}>{t.developerList}</h2>
         
         {/* 搜索框 */}
-        <div style={{ marginBottom: 16 }}>
+        <div style={{ marginBottom: 16, color: '#fff', textShadow: '0 1px 4px rgba(0,0,0,0.18)' }}>
           <div style={{ 
             position: 'relative', 
             maxWidth: 400,
@@ -415,6 +416,7 @@ export default function DeveloperManagement() {
           }}>
             <input
               type="text"
+              className="search-input"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder={lang === 'zh' ? '搜索开发者姓名、角色、技能...' : 'Search by name, role, skills...'}
@@ -425,7 +427,9 @@ export default function DeveloperManagement() {
                 border: '1px solid #e5e7eb',
                 fontSize: 14,
                 outline: 'none',
-                transition: 'border-color 0.2s'
+                transition: 'border-color 0.2s',
+                color: '#222',
+                background: '#fff'
               }}
               onFocus={(e) => e.target.style.borderColor = '#1890ff'}
               onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
@@ -459,11 +463,12 @@ export default function DeveloperManagement() {
           {searchTerm && (
             <div style={{ 
               fontSize: 12, 
-              color: '#666', 
+              color: '#e0e7ef', 
               marginTop: 8,
               display: 'flex',
               alignItems: 'center',
-              gap: 8
+              gap: 8,
+              textShadow: '0 1px 4px rgba(0,0,0,0.18)'
             }}>
               <span>
                 {lang === 'zh' 
@@ -488,7 +493,7 @@ export default function DeveloperManagement() {
           )}
         </div>
         {filteredDevelopers.length === 0 ? (
-          <div style={{ color: '#888', textAlign: 'center', padding: 32 }}>
+          <div style={{ color: '#e0e7ef', textAlign: 'center', padding: 32, textShadow: '0 1px 4px rgba(0,0,0,0.18)' }}>
             {searchTerm ? t.noResults : t.noDevelopers}
           </div>
         ) : (
@@ -808,7 +813,6 @@ export default function DeveloperManagement() {
                 {isSuccess ? '✓' : '✕'}
               </div>
             </div>
-            
             {/* 消息内容 */}
             <div style={{ fontSize: 20, fontWeight: 600, color: '#1f2937', marginBottom: 8 }}>
               {isSuccess ? (lang === 'zh' ? '操作成功' : 'Success') : (lang === 'zh' ? '操作失败' : 'Error')}
@@ -816,7 +820,6 @@ export default function DeveloperManagement() {
             <div style={{ fontSize: 16, color: '#6b7280', marginBottom: 32 }}>
               {successMessage}
             </div>
-            
             {/* 确认按钮 */}
             <button 
               onClick={() => setShowSuccessMessage(false)}
@@ -833,6 +836,13 @@ export default function DeveloperManagement() {
           </div>
         </div>
       )}
-    </div>
+      </div> {/* 内容区div闭合 */}
+      <style jsx global>{`
+        .search-input::placeholder {
+          color: #666;
+          opacity: 1;
+        }
+      `}</style>
+    </div> // 外层全屏背景div闭合
   );
 } 

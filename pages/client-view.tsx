@@ -238,7 +238,9 @@ export default function ClientView() {
   console.log('myTasks:', myTasks);
 
   return (
-    <div className="max-w-2xl mx-auto mt-10 p-6" style={{ position: 'relative' }}>
+    <div style={{ position: 'relative', minHeight: '100vh', width: '100vw', height: '100vh', overflow: 'auto', backgroundImage: 'url(/bg-client.jpg)', backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }}>
+      <div style={{ position: 'fixed', left: 0, top: 0, width: '100vw', height: '100vh', background: 'rgba(16,24,40,0.32)', zIndex: 0, pointerEvents: 'none' }} />
+      <div className="max-w-2xl mx-auto mt-10 p-6" style={{ position: 'relative', zIndex: 1 }}>
       {/* 左上角首页按钮 */}
       <div style={{ position: 'fixed', left: 24, top: 24, display: 'flex', gap: 12, zIndex: 3000 }}>
         <button
@@ -271,7 +273,7 @@ export default function ClientView() {
         </button>
       </div>
 
-      <h1 className="text-2xl font-bold mb-6">{t.title}</h1>
+      <h1 className="text-2xl font-bold mb-6" style={{ color: '#fff', textShadow: '0 2px 8px rgba(0,0,0,0.18)' }}>{t.title}</h1>
       
       {/* 管理开发者按钮 */}
       <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'flex-end' }}>
@@ -293,12 +295,12 @@ export default function ClientView() {
         </button>
       </div>
       
-      <div className="mb-6 flex items-center gap-2">
+      <div className="mb-6 flex items-center gap-2" style={{ color: '#fff', textShadow: '0 1px 4px rgba(0,0,0,0.18)' }}>
         <span>{t.memberId}</span>
-        <input value={memberId} onChange={e => setMemberId(e.target.value)} className="border rounded px-2 py-1" style={{width: 100}} placeholder={t.memberIdPlaceholder} />
+        <input value={memberId} onChange={e => setMemberId(e.target.value)} className="border rounded px-2 py-1" style={{width: 100, background: 'rgba(255,255,255,0.92)', color: '#222'}} placeholder={t.memberIdPlaceholder} />
       </div>
       {myTasks.length === 0 ? (
-        <div className="text-gray-500">{t.noTask}</div>
+        <div style={{ color: '#e0e7ef', textShadow: '0 1px 4px rgba(0,0,0,0.18)' }}>{t.noTask}</div>
       ) : (
         <div className="space-y-6">
           {myTasks.map((task, idx) => (
@@ -431,6 +433,7 @@ export default function ClientView() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 } 
