@@ -103,3 +103,16 @@ mysql -u root -p ai_remote_pm < data/seed.sql
 
 欢迎 issue、PR 或建议！  
 Issues, PRs, and suggestions are welcome!
+
+## 环境变量配置 Environment Variables
+
+请将项目根目录下的 `.env.example` 文件复制为 `.env.local`，并根据实际情况填写数据库、API 密钥等敏感信息：
+
+Please copy `.env.example` to `.env.local` in the project root, and fill in your own database credentials, API keys, etc.
+
+```bash
+cp .env.example .env.local
+```
+
+`.env.local` 文件不会被上传到仓库，请妥善保存。
+The `.env.local` file is ignored by git and will not be uploaded to the repository.
