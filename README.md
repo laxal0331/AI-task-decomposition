@@ -78,6 +78,28 @@ AI Remote Project Management Platform
 
 ---
 
+## 环境变量配置 Environment Variables
+
+请将项目根目录下的 `.env.example` 文件复制为 `.env.local`，并根据实际情况填写数据库、API 密钥等敏感信息：
+
+Please copy `.env.example` to `.env.local` in the project root, and fill in your own database credentials, API keys, etc.
+
+**支持的 AI Key：**
+- `DEEPSEEK_API_KEY`（优先使用）
+- `OPENAI_API_KEY`（如未配置 DeepSeek，则自动使用 OpenAI）
+
+> 系统会自动优先使用 DeepSeek，有哪个用哪个。
+> The system will automatically use DeepSeek first, and fallback to OpenAI if DeepSeek is not configured.
+
+```bash
+cp .env.example .env.local
+```
+
+`.env.local` 文件不会被上传到仓库，请妥善保存。
+The `.env.local` file is ignored by git and will not be uploaded to the repository.
+
+---
+
 ## 快速启动 Quick Start
 
 ```bash
@@ -103,16 +125,3 @@ mysql -u root -p ai_remote_pm < data/seed.sql
 
 欢迎 issue、PR 或建议！  
 Issues, PRs, and suggestions are welcome!
-
-## 环境变量配置 Environment Variables
-
-请将项目根目录下的 `.env.example` 文件复制为 `.env.local`，并根据实际情况填写数据库、API 密钥等敏感信息：
-
-Please copy `.env.example` to `.env.local` in the project root, and fill in your own database credentials, API keys, etc.
-
-```bash
-cp .env.example .env.local
-```
-
-`.env.local` 文件不会被上传到仓库，请妥善保存。
-The `.env.local` file is ignored by git and will not be uploaded to the repository.
