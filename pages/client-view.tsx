@@ -110,44 +110,80 @@ export default function ClientView() {
 
   const fetchLatestTasks = useCallback(async () => {
     try {
-      const res = await fetch('/api/orders');
-      const data = await res.json();
-      console.log('orders:', data.orders);
-      if (data.orders && data.orders.length > 0) {
-        // 强制取第一个订单测试
-        const latestOrder = data.orders[0];
-        console.log('latestOrder:', latestOrder);
-        if (latestOrder && latestOrder.id) {
-          const taskUrl = `/api/orders?orderId=${latestOrder.id}`;
-          console.log('请求任务接口:', taskUrl);
-          const tasksRes = await fetch(taskUrl);
-          const tasksData = await tasksRes.json();
-          console.log('tasksData:', tasksData);
-          if (tasksData.tasks) {
-            const tasksWithMember = (tasksData.tasks as any[]).map((task: any) => ({
+      console.log('=== 客户端视图获取任务数据 ===');
+      console.log('当前成员ID:', memberId);
+      
+      // 如果成员ID为空，不显示任何任务
+      if (!memberId || memberId.trim() === '') {
+        console.log('成员ID为空，不显示任务');
+        setTasks([]);
+        return;
+      }
+      
+      // 直接使用localStorage，确保数据一致性
+      console.log('直接从localStorage获取数据...');
+      const savedOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+      const savedTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+      
+      console.log('localStorage中的orders数量:', savedOrders.length);
+      console.log('localStorage中的tasks数量:', savedTasks.length);
+      
+      if (savedOrders.length > 0 && savedTasks.length > 0) {
+        // 取最新的订单
+        const latestOrder = savedOrders[savedOrders.length - 1];
+        console.log('localStorage最新订单:', latestOrder);
+        
+        // 获取该订单的任务
+        const orderTasks = savedTasks.filter((task: any) => task.order_id === latestOrder.id);
+        console.log('该订单的任务数量:', orderTasks.length);
+        console.log('任务分配情况:', orderTasks.map((t: any) => ({ id: t.id, assigned_member_id: t.assigned_member_id, title: t.title_zh || t.title })));
+        
+        // 只显示分配给当前成员的任务
+        const memberTasks = orderTasks.filter((task: any) => 
+          String(task.assigned_member_id) === String(memberId)
+        );
+        
+        console.log('分配给当前成员的任务数量:', memberTasks.length);
+        
+        const tasksWithMember = memberTasks.map((task: any) => ({
               ...task,
               assignedMemberId: task.assigned_member_id,
               orderId: latestOrder.id
             }));
-            console.log('tasksWithMember:', JSON.stringify(tasksWithMember, null, 2), 'memberId:', memberId);
-            setTasks(tasksWithMember);
-          } else {
-            setTasks([]);
-          }
-        } else {
-          setTasks([]);
-        }
+        
+        console.log('从localStorage获取的任务:', tasksWithMember);
+        setTasks(tasksWithMember);
       } else {
+        console.log('localStorage中也没有数据');
         setTasks([]);
       }
+      
+      // 额外：尝试从其他可能的localStorage键获取数据
+      console.log('尝试从其他localStorage键获取数据...');
+      const allKeys = Object.keys(localStorage);
+      console.log('localStorage中的所有键:', allKeys);
+      
+      // 查找包含任务数据的键
+      for (const key of allKeys) {
+        if (key.includes('task') || key.includes('order')) {
+          try {
+            const data = JSON.parse(localStorage.getItem(key) || '[]');
+            console.log(`键 ${key} 中的数据:`, Array.isArray(data) ? data.length : data);
+          } catch (e) {
+            console.log(`键 ${key} 中的数据无法解析`);
+          }
+        }
+      }
     } catch (error) {
-      console.error('Fetch tasks error:', error);
+      console.error('获取任务数据失败:', error);
+      setTasks([]);
     }
   }, [memberId]);
 
   useEffect(() => {
     fetchLatestTasks();
-    const interval = setInterval(fetchLatestTasks, 5000);
+    // 增加数据获取频率，确保及时获取到任务分配
+    const interval = setInterval(fetchLatestTasks, 2000);
     return () => clearInterval(interval);
   }, [fetchLatestTasks]);
 
@@ -213,28 +249,53 @@ export default function ClientView() {
 
   const updateTaskStatus = async (taskId: string, status: string) => {
     try {
-      const res = await fetch(`/api/tasks/${taskId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status }),
-      });
+      console.log(`=== 更新任务状态 ===`);
+      console.log(`任务ID: ${taskId}, 新状态: ${status}`);
       
-      if (res.ok) {
-        // 更新本地状态
+      // 直接更新localStorage中的任务状态
+      const savedTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+      const taskIndex = savedTasks.findIndex((t: any) => t.id === taskId);
+      
+      if (taskIndex !== -1) {
+        savedTasks[taskIndex] = {
+          ...savedTasks[taskIndex],
+          status: status
+        };
+        localStorage.setItem('tasks', JSON.stringify(savedTasks));
+        console.log(`任务 ${taskId} 状态已更新为: ${status}`);
+        
+        // 更新本地React状态
         setTasks(tasks.map(t => 
           t.id === taskId ? { ...t, status } : t
         ));
+        
+        // 可选：同时调用API更新服务器端（不等待结果）
+        fetch(`/api/tasks/${taskId}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ status }),
+        }).catch(error => {
+          console.log('API更新失败，但localStorage已更新:', error);
+        });
+      } else {
+        console.log(`未找到任务 ${taskId}`);
       }
     } catch (error) {
-      console.error('Update task status error:', error);
+      console.error('更新任务状态失败:', error);
     }
   };
 
   // 增强过滤逻辑，确保类型一致且去除空格
-  console.log('memberId:', memberId, 'assignedMemberIds:', tasks.map(t => t.assignedMemberId));
-  const myTasks = tasks.filter(t => String(t.assignedMemberId).trim() === String(memberId).trim());
+  console.log('memberId:', memberId, 'assignedMemberIds:', tasks.map((t: any) => t.assignedMemberId));
+  const myTasks = tasks.filter((t: any) => {
+    const taskMemberId = String(t.assignedMemberId || '').trim();
+    const currentMemberId = String(memberId || '').trim();
+    const isAssigned = taskMemberId === currentMemberId;
+    console.log(`任务 ${t.id} (${t.title_zh || t.title}): assignedMemberId=${taskMemberId}, currentMemberId=${currentMemberId}, isAssigned=${isAssigned}`);
+    return isAssigned;
+  });
   console.log('myTasks:', myTasks);
 
   return (
@@ -297,9 +358,20 @@ export default function ClientView() {
       
       <div className="mb-6 flex items-center gap-2" style={{ color: '#fff', textShadow: '0 1px 4px rgba(0,0,0,0.18)' }}>
         <span>{t.memberId}</span>
-        <input value={memberId} onChange={e => setMemberId(e.target.value)} className="border rounded px-2 py-1" style={{width: 100, background: 'rgba(255,255,255,0.92)', color: '#222'}} placeholder={t.memberIdPlaceholder} />
+        <input
+          type="text"
+          value={memberId}
+          onChange={e => setMemberId(e.target.value)}
+          placeholder={lang === 'zh' ? '请输入开发者ID（如 成员9）' : 'Please enter developer ID (e.g. member9)'}
+          className="input"
+          style={{ color: '#222', background: '#fff', border: '2px solid #222' }}
+        />
       </div>
-      {myTasks.length === 0 ? (
+      {!memberId || memberId.trim() === '' ? (
+        <div style={{ color: '#e0e7ef', textShadow: '0 1px 4px rgba(0,0,0,0.18)' }}>
+          {lang === 'zh' ? '请输入开发者ID查看任务' : 'Please enter developer ID to view tasks'}
+        </div>
+      ) : myTasks.length === 0 ? (
         <div style={{ color: '#e0e7ef', textShadow: '0 1px 4px rgba(0,0,0,0.18)' }}>{t.noTask}</div>
       ) : (
         <div className="space-y-6">

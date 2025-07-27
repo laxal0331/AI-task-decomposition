@@ -1,6 +1,7 @@
 # AI远程项目管理平台  
 AI Remote Project Management Platform
-# ⚠️ 本分支为“演示版本（无数据库）”
+# ⚠️ 本分支为“演示版本（无数据库）”，所有数据仅存于内存，重启即丢失，仅供体验和演示。
+# ⚠️ This branch is a 'Demo Version (No Database)'. All data is stored in memory only, will be lost on restart, and is for demo/experience purposes only.
 
 > 一个基于 Next.js + TypeScript 的智能任务分解与团队分配平台，支持 AI 自动拆解项目目标、智能分配开发任务、团队成员管理与进度追踪。适用于远程开发团队、自由职业项目协作等场景。  
 > A Next.js + TypeScript based platform for intelligent task decomposition and team assignment, supporting AI-powered project breakdown, smart developer matching, team management, and progress tracking. Ideal for remote teams and freelance project collaboration.

@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
+import { generateDefaultTeamMembers, loadFromLocalStorage, saveToLocalStorage } from '../lib/dataStore';
+import { translateSkills, translateRoles } from '../lib/teamData';
 
 const texts = {
   zh: {
@@ -107,7 +109,12 @@ export default function DeveloperManagement() {
   const router = useRouter();
   const [lang, setLang] = useState<'zh' | 'en'>('zh');
   const t = texts[lang];
-  const [developers, setDevelopers] = useState<any[]>([]);
+  // 组件级持久化：优先从 localStorage 读取
+  const [developers, setDevelopers] = useState<any[]>(() =>
+    typeof window !== 'undefined'
+      ? loadFromLocalStorage('teamMembers', generateDefaultTeamMembers())
+      : generateDefaultTeamMembers()
+  );
   const [filteredDevelopers, setFilteredDevelopers] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [showForm, setShowForm] = useState(false);
@@ -131,6 +138,11 @@ export default function DeveloperManagement() {
     week4_hours: '',
     skills: ''
   });
+
+  // 每次 developers 变更后同步到 localStorage
+  useEffect(() => {
+    saveToLocalStorage('teamMembers', developers);
+  }, [developers]);
 
   // 获取开发者列表
   const fetchDevelopers = async () => {
@@ -216,36 +228,28 @@ export default function DeveloperManagement() {
       const available_hours = `${formData.week1_hours}/${formData.week2_hours}/${formData.week3_hours}/${formData.week4_hours}`;
 
       const submitData = {
+        id: editingId || `dev_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         name: formData.name,
         name_en: formData.name_en,
-        role: formData.role,
+        roles: [formData.role],
         hourly_rate: parseFloat(formData.hourly_rate),
         speed_factor: parseFloat(formData.speed_factor),
-        available_hours: available_hours,
+        available_hours: available_hours.split('/').map(h => parseInt(h)),
         skills: formData.skills.split(',').map(s => s.trim()).filter(s => s)
       };
-
-      const url = editingId ? `/api/members/${editingId}` : '/api/members';
-      const method = editingId ? 'PUT' : 'POST';
-      
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(submitData)
-      });
-
-      if (res.ok) {
-        // 显示美化的成功消息
-        setSuccessMessage(editingId ? t.updateSuccess : t.success);
-        setIsSuccess(true);
-        setShowSuccessMessage(true);
-        setShowForm(false);
-        setEditingId(null);
-        resetForm();
-        fetchDevelopers();
+      let newDevelopers;
+      if (editingId) {
+        newDevelopers = developers.map(d => d.id === editingId ? { ...d, ...submitData } : d);
       } else {
-        throw new Error('Request failed');
+        newDevelopers = [...developers, submitData];
       }
+      setDevelopers(newDevelopers);
+      setSuccessMessage(editingId ? t.updateSuccess : t.success);
+      setIsSuccess(true);
+      setShowSuccessMessage(true);
+      setShowForm(false);
+      setEditingId(null);
+      resetForm();
     } catch (error) {
       console.error('Submit error:', error);
       setSuccessMessage(editingId ? t.updateError : t.error);
@@ -326,21 +330,9 @@ export default function DeveloperManagement() {
 
   const handleDelete = async () => {
     if (!deleteId) return;
-    
-    try {
-      const res = await fetch(`/api/members/${deleteId}`, {
-        method: 'DELETE'
-      });
-      
-      if (res.ok) {
-        const updatedDevelopers = developers.filter(d => d.id !== deleteId);
-        setDevelopers(updatedDevelopers);
-        setFilteredDevelopers(filteredDevelopers.filter(d => d.id !== deleteId));
-        setDeleteId(null);
-      }
-    } catch (error) {
-      console.error('Delete error:', error);
-    }
+    const updatedDevelopers = developers.filter(d => d.id !== deleteId);
+    setDevelopers(updatedDevelopers);
+    setDeleteId(null);
   };
 
   return (
@@ -540,21 +532,8 @@ export default function DeveloperManagement() {
                             return lang === 'zh' ? '未知角色' : 'Unknown Role';
                           }
                           
-                          // 角色名称映射
-                          const roleMap = {
-                            '前端工程师': 'Frontend Engineer',
-                            '后端工程师': 'Backend Engineer',
-                            'UI设计师': 'UI Designer',
-                            'UX设计师': 'UX Designer',
-                            '测试工程师': 'Test Engineer',
-                            '数据库工程师': 'Database Engineer',
-                            '产品经理': 'Product Manager',
-                            'DevOps工程师': 'DevOps Engineer',
-                            '全栈工程师': 'Full Stack Engineer',
-                            '杂项专员': 'General Specialist'
-                          };
-                          
-                          return lang === 'zh' ? roleName : (roleMap[roleName as keyof typeof roleMap] || roleName);
+                          // 使用翻译函数
+                          return translateRoles([roleName], lang)[0];
                         })()}
                       </span>
                     </div>
@@ -573,7 +552,7 @@ export default function DeveloperManagement() {
                         }
                       })()}</div>
                       {developer.skills && developer.skills.length > 0 && (
-                        <div>{lang === 'zh' ? '技能' : 'Skills'}: {developer.skills.join(', ')}</div>
+                        <div>{lang === 'zh' ? '技能' : 'Skills'}: {translateSkills(developer.skills, lang).join(', ')}</div>
                       )}
                     </div>
                   </div>

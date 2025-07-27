@@ -1,43 +1,36 @@
-import { seedTeamMembers } from './lib/teamData.js';
-import { teamMemberService } from './lib/dbService.js';
-import { initDatabase } from './lib/database.js';
+const { teamMembers, saveAllData } = require('./lib/dataStore');
+const { seedTeamMembers } = require('./lib/teamData');
 
-async function init() {
-  try {
-    await initDatabase();
-    console.log('数据库初始化成功');
-  } catch (err) {
-    console.error('数据库初始化失败:', err);
-    process.exit(1);
-  }
-  try {
-    // 检查 team_members 表是否为空
-    const members = await teamMemberService.getAll();
-    if (!members || members.length === 0) {
-      // 分批写入成员
-      await new Promise((resolve) => {
-        seedTeamMembers(async (allMembers) => {
-          const batchSize = 100;
-          for (let i = 0; i < allMembers.length; i += batchSize) {
-            const batch = allMembers.slice(i, i + batchSize);
-            try {
-              await teamMemberService.bulkInsert(batch);
-              console.log(`已写入 ${Math.min(i + batch.length, allMembers.length)}/${allMembers.length}`);
-            } catch (e) {
-              console.error('写入成员批次出错:', e);
-            }
-          }
-          console.log(`已全部写入 ${allMembers.length} 个团队成员到数据库`);
-          resolve();
-        });
-      });
-    } else {
-      console.log(`团队成员表已有 ${members.length} 条数据，无需重复写入`);
-    }
-  } catch (err) {
-    console.error('成员写入流程出错:', err);
-    process.exit(1);
-  }
-}
+console.log('=== 重新初始化团队成员数据 ===');
 
-init(); 
+// 清空现有数据
+teamMembers.length = 0;
+
+// 重新生成团队成员数据
+seedTeamMembers(async (members) => {
+  console.log('生成团队成员数量:', members.length);
+  
+  // 将新成员数据添加到全局存储
+  teamMembers.push(...members);
+  
+  // 保存到数据库
+  await saveAllData();
+  
+  console.log('✅ 团队成员数据初始化完成');
+  console.log('团队成员数量:', teamMembers.length);
+  
+  // 显示一些示例数据
+  console.log('示例成员数据:');
+  members.slice(0, 3).forEach((member, index) => {
+    console.log(`成员 ${index + 1}:`, {
+      id: member.id,
+      name: member.name,
+      roles: member.roles,
+      skills: member.skills.slice(0, 3), // 只显示前3个技能
+      hourly_rate: member.hourly_rate,
+      speed_factor: member.speed_factor
+    });
+  });
+  
+  process.exit(0);
+}); 

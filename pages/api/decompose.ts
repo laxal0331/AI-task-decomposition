@@ -1,7 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { getTasksFromAI } from "@/lib/openai";
-import { orderService, taskService, teamMemberService } from "../../lib/dbService";
-import { initDatabase } from "../../lib/database";
+import { orders, tasks, teamMembers, saveAllData, debugData } from "../../lib/dataStore";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { goal, assignMode, lang = 'zh' } = req.body;
@@ -10,59 +9,65 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: "请输入目标" });
   }
 
-  // 调试环境变量
-  console.log("环境变量检查:");
-  console.log("DEEPSEEK_API_KEY 存在:", !!process.env.DEEPSEEK_API_KEY);
-  console.log("DEEPSEEK_API_KEY 长度:", process.env.DEEPSEEK_API_KEY?.length || 0);
-
   try {
-    // 首先初始化数据库（如果不存在）
-    try {
-      await initDatabase();
-    } catch (dbError) {
-      console.error('Database initialization error:', dbError);
-      // 如果数据库初始化失败，返回错误
-      return res.status(500).json({ 
-        error: "数据库初始化失败，请检查MySQL连接配置", 
-        details: String(dbError) 
-      });
-    }
-
-    // 生成任务
-    const tasks = await getTasksFromAI(goal);
+    console.log('=== 开始任务分解 ===');
+    console.log('目标:', goal);
+    console.log('分配模式:', assignMode);
     
-    // 获取所有团队成员
-    const members = await teamMemberService.getAll();
+    // 生成任务
+    const aiTasks = await getTasksFromAI(goal);
+    console.log('AI生成的任务数量:', aiTasks.length);
+    
+    console.log('团队成员数量:', teamMembers.length);
     
     // 创建订单（带任务数量）
     const orderId = Date.now().toString();
-    await orderService.createOrder(orderId, goal, assignMode, tasks.length, lang);
+    console.log('创建的订单ID:', orderId);
     
-    // 保存任务到数据库，并补充id字段
+    // 只返回AI生成的任务，让客户端自己处理数据保存
     const tasksWithId = [];
-    for (const [index, task] of tasks.entries()) {
+    for (const [index, task] of aiTasks.entries()) {
       const taskId = task.id || `${orderId}_${index}`;
-      await taskService.createTask({
+      
+      const newTask = {
         id: taskId,
-        orderId: orderId,
-        titleZh: task.title_zh || task.title || '',
-        titleEn: task.title_en || task.title || '',
-        roleZh: task.role_zh || task.role || '',
-        roleEn: task.role_en || task.role || '',
-        estimatedHours: task.estimated_hours || 0
-      });
-      tasksWithId.push({ ...task, id: taskId });
+        order_id: orderId,
+        title_zh: task.title_zh || task.title || '',
+        title_en: task.title_en || task.title || '',
+        role_zh: task.role_zh || task.role || '',
+        role_en: task.role_en || task.role || '',
+        estimated_hours: task.estimated_hours || 0,
+        status: 'PENDING',
+        assigned_member_id: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      
+      tasksWithId.push(newTask);
     }
     
-    // 返回任务数据和订单ID和成员
+    console.log('AI生成任务数量:', tasksWithId.length);
+    console.log('=== 任务分解完成 ===\n');
+    
+    // 只返回AI任务和订单ID，让客户端处理数据保存
     res.status(200).json({ 
       tasks: tasksWithId, 
       orderId,
-      members,
-      message: "任务已保存到数据库" 
+      members: teamMembers,
+      // 创建订单对象供客户端保存
+      orderData: {
+        id: orderId,
+        goal,
+        assign_mode: assignMode,
+        status: '未开始',
+        task_count: aiTasks.length,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      },
+      message: "任务分解完成" 
     });
   } catch (error) {
-    console.error('Decompose API error:', error);
+    console.error('任务分解失败:', error);
     res.status(500).json({ 
       error: "任务分解失败", 
       details: String(error) 

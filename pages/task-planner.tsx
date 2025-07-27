@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from 'next/router';
 import { roleMap } from '../lib/teamData';
 import { smartMatchDevelopersForTask, SmartMatchResult, globalFastestAssignment } from '../lib/smartMatch';
+import { translateSkills, translateRoles } from '../lib/teamData';
 
 interface Task {
   title: string;
@@ -128,7 +129,7 @@ const texts = {
     },
       en: {
       title: 'AI Task Decomposition',
-      mode: 'Assignment Mode:',
+      mode: 'Mode:',
       fast: 'Fastest',
       balanced: 'Balanced',
       slow: 'Lowest Cost',
@@ -244,6 +245,38 @@ export default function TaskPlanner() {
   const [selectedMember, setSelectedMember] = useState<any>(null);
   const [popupPos, setPopupPos] = useState<{x: number, y: number} | null>(null);
   const [popupTaskIdx, setPopupTaskIdx] = useState<number | null>(null);
+  
+  // 处理成员点击弹窗的通用函数
+  const handleMemberClick = (e: React.MouseEvent, member: any, taskIndex: number) => {
+    // 使用鼠标位置来定位弹窗
+    const mouseX = e.clientX;
+    const mouseY = e.clientY;
+    const popupWidth = 240;
+    const popupHeight = 180;
+    
+    // 计算弹窗位置，优先显示在鼠标右侧
+    let x = mouseX + 10;
+    let y = mouseY - 20;
+    
+    // 如果右侧空间不够，显示在左侧
+    if (x + popupWidth > window.innerWidth) {
+      x = mouseX - popupWidth - 10;
+    }
+    
+    // 如果下边空间不够，显示在上边
+    if (y + popupHeight > window.innerHeight) {
+      y = mouseY - popupHeight + 20;
+    }
+    
+    // 确保不超出边界
+    x = Math.max(10, Math.min(x, window.innerWidth - popupWidth - 10));
+    y = Math.max(10, Math.min(y, window.innerHeight - popupHeight - 10));
+    
+    setSelectedMember(member);
+    setPopupPos({ x, y });
+    setPopupTaskIdx(taskIndex);
+  };
+  
   const [assignMode, setAssignMode] = useState<'slow' | 'balanced' | 'fast'>('slow');
   const [assignedTasks, setAssignedTasks] = useState<{ [memberId: string]: number[] }>({});
   const [lang, setLang] = useState<'zh' | 'en'>('zh');
@@ -278,6 +311,48 @@ export default function TaskPlanner() {
         throw new Error(data.error);
       }
       
+      console.log('=== 任务分解返回数据 ===');
+      console.log('完整的返回数据:', data);
+      console.log('返回的orderId:', data.orderId);
+      console.log('返回的任务数量:', data.tasks?.length);
+      console.log('返回的成员数量:', data.members?.length);
+      console.log('返回的message:', data.message);
+      
+      // 在客户端直接处理数据保存到localStorage
+      if (data.orderData && data.tasks) {
+        console.log('在客户端保存数据到localStorage...');
+        
+        // 读取现有数据
+        const existingOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+        const existingTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+        
+        console.log('现有订单数量:', existingOrders.length);
+        console.log('现有任务数量:', existingTasks.length);
+        
+        // 处理任务数据，确保包含所有必要的属性
+        const processedTasks = data.tasks.map((task: any, idx: number) => ({ 
+          ...task, 
+          title: task.title_zh || task.title || '',
+          role: task.role_zh || task.role || '',
+          status: STATUS.NOT_STARTED, 
+          id: task.id
+        }));
+        
+        // 添加新订单和任务
+        existingOrders.push(data.orderData);
+        existingTasks.push(...processedTasks);
+        
+        // 保存到localStorage
+        localStorage.setItem('orders', JSON.stringify(existingOrders));
+        localStorage.setItem('tasks', JSON.stringify(existingTasks));
+        
+        console.log('保存后订单数量:', existingOrders.length);
+        console.log('保存后任务数量:', existingTasks.length);
+        console.log('新增订单:', data.orderData);
+        console.log('新增任务数量:', processedTasks.length);
+        console.log('处理后的任务示例:', processedTasks[0]);
+      }
+      
       // 使用数据库返回的任务数据
       const tasksWithId = data.tasks.map((task: any, idx: number) => ({ 
         ...task, 
@@ -286,14 +361,23 @@ export default function TaskPlanner() {
         status: STATUS.NOT_STARTED, 
         id: task.id  // 直接使用数据库返回的ID，不重新生成
       }));
+      console.log('处理后的任务数据:', tasksWithId);
       setTasks(tasksWithId.map(normalizeTaskStatus));
       setSelectedMembers({});
       // 重置已分配任务状态，确保重新拆解时有完整的成员选择
       setAssignedTasks({});
       setDbOrderId(data.orderId);
+      console.log('设置的dbOrderId:', data.orderId);
       // 统一使用API返回的成员数据，确保数据一致性
       if (data.members) {
         setTeamData(data.members);
+      }
+      
+      // 任务分解成功后，如果订单面板打开，刷新订单列表
+      if (ordersOpen) {
+        setTimeout(() => {
+          fetchOrders();
+        }, 500); // 延迟500ms确保数据已保存
       }
     } catch (error) {
       console.error('Submit error:', error);
@@ -316,18 +400,17 @@ export default function TaskPlanner() {
     return used + thisTaskHours > dev.available_hours;
   }
 
-  // 自动分配成员：分配模式切换时自动选择推荐列表第一个成员
+  // 自动分配成员：分配模式、任务、团队成员变化时自动选择推荐列表第一个成员
   useEffect(() => {
-    setSelectedMembers({});
-    if (tasks.length === 0) return;
+    // 只有数据都准备好才自动分配
+    if (!tasks.length || !teamData.length) return;
     let autoSelected: { [taskIdx: number]: string } = {};
     if (assignMode === 'fast') {
-      // 越快越好分配逻辑：优先让不同任务分配给不同的人并行开发，只有同一人更快时才分配给同一人
       const usedMemberIds = new Set<string>();
       tasks.forEach((task, i) => {
         const mainstreamRoles = [
           '前端工程师', '后端工程师', 'UI设计师', 'UX设计师', '测试工程师', '数据库工程师',
-          '产品经理', 'DevOps工程师', '全栈工程师'
+          '产品经理', 'DevOps工程师', '全栈工程师', '前端开发工程师', '后端开发工程师', 'UI/UX设计师'
         ];
         const mappedRole = mainstreamRoles.includes(task.role) ? (roleMap[task.role] || task.role) : '杂项专员';
         const matchResults = smartMatchDevelopersForTask(
@@ -336,19 +419,28 @@ export default function TaskPlanner() {
           assignedTasks,
           assignMode
         ).filter(r => r.canAssign);
-        // 优先分配给未被选中的成员中速度最快的
+        
+        console.log(`最快模式 - 任务 ${i} (${task.title}) 匹配结果:`, matchResults.map(r => ({
+          name: r.member.name,
+          speed_factor: r.member.speed_factor,
+          hourly_rate: r.member.hourly_rate,
+          effectiveHours: r.effectiveHours
+        })));
+        
         let best: string | null = null;
         let maxSpeed = -Infinity;
-        let foundUnassigned = false;
+        
+        // 最快模式：优先选择未分配的成员中速度最快的
+        // 这样可以实现真正的并行工作
         matchResults.forEach(r => {
           if (!usedMemberIds.has(r.member.id) && r.member.speed_factor > maxSpeed) {
             maxSpeed = r.member.speed_factor;
             best = r.member.id;
-            foundUnassigned = true;
           }
         });
-        // 如果所有成员都已分配过，则在所有可分配成员中选速度最快的
-        if (!foundUnassigned) {
+        
+        // 如果所有匹配的成员都已分配，选择速度最快的
+        if (!best) {
           matchResults.forEach(r => {
             if (r.member.speed_factor > maxSpeed) {
               maxSpeed = r.member.speed_factor;
@@ -356,17 +448,19 @@ export default function TaskPlanner() {
             }
           });
         }
+        
         if (best) {
+          const selectedMember = teamData.find(m => m.id === best);
+          console.log(`最快模式 - 任务 ${i} 选择成员: ${selectedMember?.name} (速度: ${selectedMember?.speed_factor})`);
           autoSelected[i] = best;
           usedMemberIds.add(best);
         }
       });
     } else if (assignMode === 'balanced') {
-      // 均衡分配逻辑：优先选择完成时间和价格都接近中位数的成员
       tasks.forEach((task, i) => {
         const mainstreamRoles = [
           '前端工程师', '后端工程师', 'UI设计师', 'UX设计师', '测试工程师', '数据库工程师',
-          '产品经理', 'DevOps工程师', '全栈工程师'
+          '产品经理', 'DevOps工程师', '全栈工程师', '前端开发工程师', '后端开发工程师', 'UI/UX设计师'
         ];
         const mappedRole = mainstreamRoles.includes(task.role) ? (roleMap[task.role] || task.role) : '杂项专员';
         const matchResults = smartMatchDevelopersForTask(
@@ -375,13 +469,11 @@ export default function TaskPlanner() {
           assignedTasks,
           assignMode
         ).filter(r => r.canAssign);
-        // 计算中位数
         const rates = matchResults.map(r => r.member.hourly_rate).sort((a, b) => a - b);
         const speeds = matchResults.map(r => r.member.speed_factor).sort((a, b) => a - b);
         const median = (arr: number[]) => arr.length % 2 === 0 ? (arr[arr.length/2-1] + arr[arr.length/2])/2 : arr[Math.floor(arr.length/2)];
         const medianRate = median(rates);
         const medianSpeed = median(speeds);
-        // 选择时薪和速度都最接近中位数的成员
         let minScore = Infinity;
         let best: string | null = null;
         matchResults.forEach(r => {
@@ -399,7 +491,7 @@ export default function TaskPlanner() {
       tasks.forEach((task, i) => {
         const mainstreamRoles = [
           '前端工程师', '后端工程师', 'UI设计师', 'UX设计师', '测试工程师', '数据库工程师',
-          '产品经理', 'DevOps工程师', '全栈工程师'
+          '产品经理', 'DevOps工程师', '全栈工程师', '前端开发工程师', '后端开发工程师', 'UI/UX设计师'
         ];
         const mappedRole = mainstreamRoles.includes(task.role) ? (roleMap[task.role] || task.role) : '杂项专员';
         const matchResults = smartMatchDevelopersForTask(
@@ -407,13 +499,35 @@ export default function TaskPlanner() {
           teamData,
           assignedTasks,
           assignMode
-        );
-        const match = matchResults.find(r => r.canAssign);
-        if (match) autoSelected[i] = match.member.id;
+        ).filter(r => r.canAssign);
+        
+        console.log(`最便宜模式 - 任务 ${i} (${task.title}) 匹配结果:`, matchResults.map(r => ({
+          name: r.member.name,
+          speed_factor: r.member.speed_factor,
+          hourly_rate: r.member.hourly_rate,
+          effectiveHours: r.effectiveHours
+        })));
+        
+        // 最便宜模式：选择时薪最低的成员
+        let best: string | null = null;
+        let minRate = Infinity;
+        
+        matchResults.forEach(r => {
+          if (r.member.hourly_rate < minRate) {
+            minRate = r.member.hourly_rate;
+            best = r.member.id;
+          }
+        });
+        
+        if (best) {
+          const selectedMember = teamData.find(m => m.id === best);
+          console.log(`最便宜模式 - 任务 ${i} 选择成员: ${selectedMember?.name} (时薪: ¥${selectedMember?.hourly_rate})`);
+          autoSelected[i] = best;
+        }
       });
     }
     setSelectedMembers(autoSelected);
-  }, [assignMode, tasks]);
+  }, [assignMode, tasks, teamData]);
 
   useEffect(() => {
     if (ordersOpen) {
@@ -426,26 +540,97 @@ export default function TaskPlanner() {
       const res = await fetch('/api/orders');
       const data = await res.json();
       
-      if (data.orders) {
-        setOrders(data.orders);
+      if (data.orders && data.orders.length > 0) {
+        // 按时间降序排序（最新的在前）
+        const sortedOrders = data.orders.sort((a: any, b: any) => {
+          const timeA = parseInt(a.id) || 0;
+          const timeB = parseInt(b.id) || 0;
+          return timeB - timeA;
+        });
+        setOrders(sortedOrders);
+      } else {
+        // API返回空数据，尝试从localStorage读取
+        console.log('API返回空订单，尝试从localStorage读取...');
+        tryLoadOrdersFromLocalStorage();
       }
     } catch (error) {
       console.error('Fetch orders error:', error);
+      // API调用失败，尝试从localStorage读取
+      console.log('API调用失败，尝试从localStorage读取订单...');
+      tryLoadOrdersFromLocalStorage();
+    }
+  };
+
+  // 从localStorage读取订单的备用方法
+  const tryLoadOrdersFromLocalStorage = () => {
+    try {
+      const savedOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+      console.log('从localStorage读取到订单数量:', savedOrders.length);
+      
+      if (savedOrders.length > 0) {
+        // 按时间降序排序（最新的在前）
+        const sortedOrders = savedOrders.sort((a: any, b: any) => {
+          const timeA = parseInt(a.id) || 0;
+          const timeB = parseInt(b.id) || 0;
+          return timeB - timeA;
+        });
+        setOrders(sortedOrders);
+      }
+    } catch (error) {
+      console.error('从localStorage读取订单失败:', error);
     }
   };
 
   const handleDeleteOrder = async (orderId: string) => {
+    try {
+      console.log('=== 删除订单 ===');
+      console.log('删除订单ID:', orderId);
+      
+      // 1. 删除localStorage中的订单和相关任务
+      const savedOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+      const savedTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+      
+      // 过滤掉要删除的订单
+      const filteredOrders = savedOrders.filter((o: any) => o.id !== orderId);
+      // 过滤掉该订单的所有任务
+      const filteredTasks = savedTasks.filter((t: any) => t.order_id !== orderId);
+      
+      // 保存更新后的数据
+      localStorage.setItem('orders', JSON.stringify(filteredOrders));
+      localStorage.setItem('tasks', JSON.stringify(filteredTasks));
+      
+      console.log(`✅ 本地数据删除完成`);
+      console.log(`- 剩余订单: ${filteredOrders.length}`);
+      console.log(`- 剩余任务: ${filteredTasks.length}`);
+      
+      // 2. 更新UI状态（确保排序）
+      const sortedOrders = filteredOrders.sort((a: any, b: any) => {
+        const timeA = parseInt(a.id) || 0;
+        const timeB = parseInt(b.id) || 0;
+        return timeB - timeA;
+      });
+      setOrders(sortedOrders);
+      setDeleteOrderId(null);
+      
+      // 3. 尝试同步到服务器（不阻塞）
     try {
       const res = await fetch(`/api/orders/${orderId}`, {
         method: 'DELETE',
       });
       
       if (res.ok) {
-        setOrders(orders.filter(o => o.id !== orderId));
-        setDeleteOrderId(null);
+          console.log('✅ 服务器删除成功');
+        } else {
+          console.log('⚠️ 服务器删除失败，但本地数据已删除');
       }
+      } catch (syncError) {
+        console.log('⚠️ 服务器删除出错，但本地数据已删除:', syncError);
+      }
+      
     } catch (error) {
-      console.error('Delete order error:', error);
+      console.error('删除订单失败:', error);
+      setModalMsg(`删除失败: ${String(error)}`);
+      setModalOpen(true);
     }
   };
 
@@ -459,35 +644,133 @@ export default function TaskPlanner() {
   const calculateEstimatedCompletionTime = () => {
     if (tasks.length === 0) return null;
     
-    // 计算总工时
-    const totalHours = tasks.reduce((sum, task) => sum + task.estimated_hours, 0);
+    // 如果选择了成员，按实际分配计算
+    if (Object.keys(selectedMembers).length > 0) {
+      // 计算每个成员的工作负载
+      const memberWorkload: { [memberId: string]: number } = {};
+      
+      tasks.forEach((task, index) => {
+        const memberId = selectedMembers[index];
+        if (memberId) {
+          const member = teamData.find(m => m.id === memberId);
+          if (member) {
+            // 考虑速度因子：实际工时 = 预估工时 / 速度因子
+            const actualHours = task.estimated_hours / member.speed_factor;
+            memberWorkload[memberId] = (memberWorkload[memberId] || 0) + actualHours;
+          }
+        }
+      });
+      
+      // 找到最忙的成员（瓶颈）
+      const maxWorkload = Math.max(...Object.values(memberWorkload));
+      
+      // 假设每天工作8小时，每周工作5天
+      const hoursPerDay = 8;
+      const daysPerWeek = 5;
+      const hoursPerWeek = hoursPerDay * daysPerWeek; // 40小时/周
+      
+      // 计算需要的周数（基于最忙的成员）
+      const weeksNeeded = Math.ceil(maxWorkload / hoursPerWeek);
+      const daysNeeded = Math.ceil(maxWorkload / hoursPerDay);
+      
+      return {
+        totalHours: Object.values(memberWorkload).reduce((sum, hours) => sum + hours, 0),
+        weeksNeeded,
+        daysNeeded,
+        hoursPerDay,
+        hoursPerWeek
+      };
+    } else {
+      // 没有选择成员时，按分配模式估算
+      let estimatedWeeks = 0;
+      
+      if (assignMode === 'fast') {
+        // 最快模式：假设可以并行工作，时间取决于最长的单个任务
+        const maxTaskHours = Math.max(...tasks.map(t => t.estimated_hours));
+        const hoursPerWeek = 8 * 5; // 40小时/周
+        estimatedWeeks = Math.ceil(maxTaskHours / hoursPerWeek);
+      } else if (assignMode === 'balanced') {
+        // 均衡模式：考虑并行性，但时间稍长
+        const totalHours = tasks.reduce((sum, task) => sum + task.estimated_hours, 0);
+        const hoursPerWeek = 8 * 5; // 40小时/周
+        estimatedWeeks = Math.ceil(totalHours / hoursPerWeek / 2); // 假设50%并行度
+      } else {
+        // 最便宜模式：可能串行工作，时间最长
+        const totalHours = tasks.reduce((sum, task) => sum + task.estimated_hours, 0);
+        const hoursPerWeek = 8 * 5; // 40小时/周
+        estimatedWeeks = Math.ceil(totalHours / hoursPerWeek);
+      }
+      
+      const totalHours = tasks.reduce((sum, task) => sum + task.estimated_hours, 0);
+      const daysNeeded = Math.ceil(totalHours / 8);
+      
+      return {
+        totalHours,
+        weeksNeeded: estimatedWeeks,
+        daysNeeded,
+        hoursPerDay: 8,
+        hoursPerWeek: 40
+      };
+    }
+  };
+
+  // 计算总金额
+  const calculateTotalCost = () => {
+    if (tasks.length === 0 || Object.keys(selectedMembers).length === 0) return null;
     
-    // 假设每天工作8小时，每周工作5天
-    const hoursPerDay = 8;
-    const daysPerWeek = 5;
-    const hoursPerWeek = hoursPerDay * daysPerWeek; // 40小时/周
+    let totalCost = 0;
+    let totalHours = 0;
     
-    // 计算需要的周数
-    const weeksNeeded = Math.ceil(totalHours / hoursPerWeek);
-    
-    // 计算天数
-    const daysNeeded = Math.ceil(totalHours / hoursPerDay);
+    tasks.forEach((task, index) => {
+      const memberId = selectedMembers[index];
+      if (memberId) {
+        const member = teamData.find(m => m.id === memberId);
+        if (member) {
+          const taskCost = task.estimated_hours * member.hourly_rate;
+          totalCost += taskCost;
+          totalHours += task.estimated_hours;
+        }
+      }
+    });
     
     return {
+      totalCost,
       totalHours,
-      weeksNeeded,
-      daysNeeded,
-      hoursPerDay,
-      hoursPerWeek
+      averageHourlyRate: totalHours > 0 ? totalCost / totalHours : 0
     };
   };
 
   // 拉取团队成员数据
   useEffect(() => {
     async function fetchMembers() {
+      try {
+        console.log('=== 获取团队成员数据 ===');
       const res = await fetch('/api/members');
       const data = await res.json();
-      setTeamData(data.members || []);
+        
+        if (data.members && data.members.length > 0) {
+          console.log('从API获取到成员数量:', data.members.length);
+          setTeamData(data.members);
+        } else {
+          // API返回空数据，尝试从localStorage获取
+          console.log('API返回空成员数据，尝试从localStorage获取...');
+          const savedMembers = JSON.parse(localStorage.getItem('teamMembers') || '[]');
+          console.log('localStorage中成员数量:', savedMembers.length);
+          
+          if (savedMembers.length > 0) {
+            setTeamData(savedMembers);
+            console.log('成功从localStorage加载成员数据');
+          }
+        }
+      } catch (error) {
+        console.error('获取团队成员失败:', error);
+        // API调用失败，尝试从localStorage获取
+        const savedMembers = JSON.parse(localStorage.getItem('teamMembers') || '[]');
+        if (savedMembers.length > 0) {
+          setTeamData(savedMembers);
+          console.log('API失败，从localStorage加载成员数据:', savedMembers.length);
+        }
+      }
     }
     fetchMembers();
   }, []);
@@ -496,29 +779,62 @@ export default function TaskPlanner() {
   useEffect(() => {
     if (orderId) {
       (async () => {
-        const res = await fetch(`/api/orders?orderId=${orderId}`);
-        const data = await res.json();
-        if (data.tasks) {
-          setTasks(data.tasks.map(normalizeTaskStatus));
+        console.log('=== 加载订单数据 ===');
+        console.log('订单ID:', orderId);
+        
+        // 首先尝试从localStorage加载数据
+        const savedOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+        const savedTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+        
+        console.log('localStorage中的订单数量:', savedOrders.length);
+        console.log('localStorage中的任务数量:', savedTasks.length);
+        
+        // 查找对应的订单和任务
+        const targetOrder = savedOrders.find((order: any) => order.id === orderId);
+        const targetTasks = savedTasks.filter((task: any) => task.order_id === orderId);
+        
+        console.log('找到的订单:', targetOrder);
+        console.log('找到的任务数量:', targetTasks.length);
+        
+        if (targetOrder && targetTasks.length > 0) {
+          console.log('从localStorage加载数据成功');
+          setTasks(targetTasks.map(normalizeTaskStatus));
           setDbOrderId(orderId as string);
-        }
-        if (data.order && data.order.status) {
-          setOrderStatus(data.order.status);
-        }
-        if (data.order && data.order.goal) {
-          setInput(data.order.goal);
-        }
-        if (data.order && data.order.assign_mode) {
-          setAssignMode(data.order.assign_mode);
-        }
-        // 重置已分配任务状态，确保从"我的订单"进入时显示完整的成员选择
-        setAssignedTasks({});
-        setSelectedMembers({});
-        // 统一使用API返回的成员数据，确保数据一致性
-        if (data.members) {
-          setTeamData(data.members);
+          setOrderStatus(targetOrder.status || '未开始');
+          setInput(targetOrder.goal || '');
+          setAssignMode(targetOrder.assign_mode || 'slow');
+          // 不再 setSelectedMembers，这部分交给自动分配 useEffect
+          // 不再 setAssignedTasks，这部分交给自动分配 useEffect
         } else {
           // 如果没有返回成员数据，单独获取
+          const res = await fetch(`/api/orders?orderId=${orderId}`);
+          const data = await res.json();
+          if (data.tasks) {
+            setTasks(data.tasks.map(normalizeTaskStatus));
+            setDbOrderId(orderId as string);
+          }
+          if (data.order && data.order.status) {
+            setOrderStatus(data.order.status);
+          }
+          if (data.order && data.order.goal) {
+            setInput(data.order.goal);
+          }
+          if (data.order && data.order.assign_mode) {
+            setAssignMode(data.order.assign_mode);
+          }
+          // 不再 setAssignedTasks，不再 setSelectedMembers
+          if (data.members) {
+            setTeamData(data.members);
+          } else {
+            const membersRes = await fetch('/api/members');
+            const membersData = await membersRes.json();
+            if (membersData.members) {
+              setTeamData(membersData.members);
+            }
+          }
+        }
+        // 如果从localStorage加载了数据，也需要获取团队成员数据
+        if (targetOrder && targetTasks.length > 0) {
           const membersRes = await fetch('/api/members');
           const membersData = await membersRes.json();
           if (membersData.members) {
@@ -528,6 +844,34 @@ export default function TaskPlanner() {
       })();
     }
   }, [orderId]);
+
+  // 处理重新分配单个任务的逻辑
+  useEffect(() => {
+    const { reassignTask } = router.query;
+    if (reassignTask && orderId && tasks.length > 0) {
+      // 找到需要重新分配的任务
+      const taskIndex = tasks.findIndex(task => task.id === reassignTask);
+      if (taskIndex !== -1) {
+        // 清除该任务的分配
+        setSelectedMembers(prev => {
+          const newSelected = { ...prev };
+          delete newSelected[taskIndex];
+          return newSelected;
+        });
+        
+        // 清除该任务的已分配状态
+        setAssignedTasks(prev => {
+          const newAssigned = { ...prev };
+          Object.keys(newAssigned).forEach(memberId => {
+            newAssigned[memberId] = newAssigned[memberId].filter((taskIdx: number) => taskIdx !== taskIndex);
+          });
+          return newAssigned;
+        });
+        
+        console.log(`任务 ${reassignTask} 已重置分配状态`);
+      }
+    }
+  }, [router.query.reassignTask, orderId, tasks]);
 
   // 在组件内部定义 mainContent
   console.log("调试信息:", {
@@ -543,8 +887,8 @@ export default function TaskPlanner() {
   // 使用 dbOrderId 或 orderId，优先使用 dbOrderId（新创建的订单）
   const currentOrderId = dbOrderId || orderId;
   
-  if (currentOrderId && orderStatus === '未开始' && tasks.length === 0) {
-    // 新建界面内容（分配模式+输入框）- 只有在没有任务数据时才显示
+  if (currentOrderId && tasks.length === 0 && !orderId) {
+    // 新建界面内容（分配模式+输入框）- 只有在没有任务数据且没有orderId时才显示
     mainContent = (
       <>
       <h1 style={{ color: '#fff', fontWeight: 700, fontSize: 32 }}>{t.title}</h1>
@@ -627,24 +971,20 @@ export default function TaskPlanner() {
             // 统一角色名称，非主流职位自动分配到"杂项专员"
             const mainstreamRoles = [
               '前端工程师', '后端工程师', 'UI设计师', 'UX设计师', '测试工程师', '数据库工程师',
-              '产品经理', 'DevOps工程师', '全栈工程师'
+              '产品经理', 'DevOps工程师', '全栈工程师', '前端开发工程师', '后端开发工程师', 'UI/UX设计师'
             ];
             const mappedRole = mainstreamRoles.includes(task.role) ? (roleMap[task.role] || task.role) : '杂项专员';
+            
+            console.log(`=== 任务 ${i}: ${(task as any).name_zh || (task as any).title} ===`);
+            console.log('原始角色:', task.role_zh || task.role);
+            console.log('映射后角色:', mappedRole);
+            console.log('团队数据长度:', teamData.length);
+            console.log('分配模式:', assignMode);
+            
             let matchResults: SmartMatchResult[] = [];
-            if (assignMode === 'fast') {
-              matchResults = smartMatchDevelopersForTask(
-                { ...task, role: mappedRole },
-                teamData,
-                assignedTasks,
-                assignMode
-              );
-            } else if (assignMode === 'balanced') {
-              matchResults = smartMatchDevelopersForTask(
-                { ...task, role: mappedRole },
-                teamData,
-                assignedTasks,
-                assignMode
-              );
+            if (teamData.length === 0) {
+              console.log('⚠️ 团队数据为空，无法进行匹配');
+              matchResults = [];
             } else {
               matchResults = smartMatchDevelopersForTask(
                 { ...task, role: mappedRole },
@@ -652,6 +992,18 @@ export default function TaskPlanner() {
                 assignedTasks,
                 assignMode
               );
+              
+              console.log(`匹配结果数量: ${matchResults.length}`);
+              console.log(`可分配成员: ${matchResults.filter(r => r.canAssign).length}`);
+              
+              if (matchResults.length > 0) {
+                console.log('匹配到的成员示例:', matchResults.slice(0, 3).map(r => ({
+                  name: r.member.name,
+                  roles: r.member.roles,
+                  canAssign: r.canAssign,
+                  hourlyRate: r.member.hourly_rate
+                })));
+              }
             }
             // 可分配成员和时长不足成员分开
             let canAssign = matchResults.filter(r => r.canAssign);
@@ -670,10 +1022,23 @@ export default function TaskPlanner() {
             let showDevs: SmartMatchResult[] = [];
             let moreDevs: SmartMatchResult[] = [];
             const maxShow = 12;
-            if (canAssign.length === 0 && matchResults.length > 0) {
-              // 没有完全符合的人，强制推荐2-3个最接近的（但只推荐 canAssign 为 true 的成员）
-              showDevs = matchResults.filter(r => r.canAssign).slice(0, 3);
+            if (canAssign.length === 0) {
+              // 没有完全符合的人，强制推荐最接近的成员（包括时间不足的）
+              if (matchResults.length > 0) {
+                showDevs = matchResults.slice(0, 3); // 不再只限制canAssign为true的成员
               moreDevs = matchResults.filter(r => !showDevs.includes(r));
+              } else {
+                // 如果完全没有匹配结果，随机推荐一些杂项专员
+                const miscMembers = teamData.filter(m => m.roles.includes('杂项专员')).slice(0, 3);
+                showDevs = miscMembers.map(member => ({
+                  member,
+                  canAssign: false,
+                  nextAvailableWeek: -1,
+                  totalAvailable: 0,
+                  effectiveHours: task.estimated_hours
+                }));
+                moreDevs = [];
+              }
             } else {
               const minPrice = Math.min(...canAssign.map(r => r.member.hourly_rate));
               const unselected = canAssign.filter(r => !selectedMemberIds.includes(r.member.id));
@@ -718,13 +1083,7 @@ export default function TaskPlanner() {
                           <span
                             key={member.id}
                             className={`member-badge${isSelected ? ' selected-member' : ''}`}
-                            onClick={e => {
-                              const rect = (e.target as HTMLElement).getBoundingClientRect();
-                              setSelectedMember(member);
-                              setPopupPos({ x: rect.right + window.scrollX + 8, y: rect.top + window.scrollY });
-                              setPopupTaskIdx(i);
-                              setSelectedMembers(prev => ({ ...prev, [i]: member.id }));
-                            }}
+                            onClick={e => handleMemberClick(e, member, i)}
                             style={{ cursor: 'pointer', userSelect: 'none' }}
                             title={canAssign ? t.detail : t.detailInsufficient}
                           >
@@ -753,13 +1112,7 @@ export default function TaskPlanner() {
                           <span
                             key={member.id}
                             className={`member-badge${isSelected ? ' selected-member' : ''}`}
-                            onClick={e => {
-                              const rect = (e.target as HTMLElement).getBoundingClientRect();
-                              setSelectedMember(member);
-                              setPopupPos({ x: rect.right + window.scrollX + 8, y: rect.top + window.scrollY });
-                              setPopupTaskIdx(i);
-                              setSelectedMembers(prev => ({ ...prev, [i]: member.id }));
-                            }}
+                            onClick={e => handleMemberClick(e, member, i)}
                             style={{ cursor: 'pointer', userSelect: 'none' }}
                             title={t.select}
                           >
@@ -777,13 +1130,7 @@ export default function TaskPlanner() {
                           <span
                             key={member.id}
                             className={`member-badge${isSelected ? ' selected-member' : ''}`}
-                            onClick={e => {
-                              const rect = (e.target as HTMLElement).getBoundingClientRect();
-                              setSelectedMember(member);
-                              setPopupPos({ x: rect.right + window.scrollX + 8, y: rect.top + window.scrollY });
-                              setPopupTaskIdx(i);
-                              setSelectedMembers(prev => ({ ...prev, [i]: member.id }));
-                            }}
+                            onClick={e => handleMemberClick(e, member, i)}
                             style={{ cursor: 'pointer', userSelect: 'none' }}
                             title={t.select}
                           >
@@ -801,14 +1148,7 @@ export default function TaskPlanner() {
                           <span
                             key={member.id}
                             className={`member-badge${isSelected ? ' selected-member' : ''}`}
-                            onClick={e => {
-                              const rect = (e.target as HTMLElement).getBoundingClientRect();
-                              setSelectedMember(member);
-                              setPopupPos({ x: rect.right + window.scrollX + 8, y: rect.top + window.scrollY });
-                              setPopupPos({ x: rect.right + window.scrollX + 8, y: rect.top + window.scrollY });
-                              setPopupTaskIdx(i);
-                              setSelectedMembers(prev => ({ ...prev, [i]: member.id }));
-                            }}
+                            onClick={e => handleMemberClick(e, member, i)}
                             style={{ cursor: 'pointer', userSelect: 'none' }}
                             title={t.select}
                           >
@@ -830,13 +1170,7 @@ export default function TaskPlanner() {
                           <span
                             key={member.id}
                             className={`member-badge${isSelected ? ' selected-member' : ''}`}
-                            onClick={e => {
-                              const rect = (e.target as HTMLElement).getBoundingClientRect();
-                              setSelectedMember(member);
-                              setPopupPos({ x: rect.right + window.scrollX + 8, y: rect.top + window.scrollY });
-                              setPopupTaskIdx(i);
-                              setSelectedMembers(prev => ({ ...prev, [i]: member.id }));
-                            }}
+                            onClick={e => handleMemberClick(e, member, i)}
                             style={{ cursor: 'pointer', userSelect: 'none' }}
                             title={t.detailInsufficient}
                           >
@@ -851,9 +1185,10 @@ export default function TaskPlanner() {
             );
           })}
           
-          {/* 预计完成时间显示 */}
+          {/* 预计完成时间和总金额显示 */}
           {tasks.length > 0 && (() => {
             const completionInfo = calculateEstimatedCompletionTime();
+            const costInfo = calculateTotalCost();
             if (!completionInfo) return null;
             
             return (
@@ -890,7 +1225,7 @@ export default function TaskPlanner() {
                       {lang === 'zh' ? '总工时' : 'Total Hours'}
                     </div>
                     <div style={{ fontSize: 20, fontWeight: 600, color: '#1e293b' }}>
-                      {completionInfo.totalHours} {lang === 'zh' ? '小时' : 'h'}
+                      {completionInfo.totalHours.toFixed(1)} {lang === 'zh' ? '小时' : 'h'}
                     </div>
                   </div>
                   
@@ -924,6 +1259,67 @@ export default function TaskPlanner() {
                     </div>
                   </div>
                 </div>
+                
+                {/* 分配模式说明 */}
+                <div style={{
+                  marginTop: 12,
+                  fontSize: 12,
+                  color: '#64748b',
+                  fontStyle: 'italic'
+                }}>
+                  {assignMode === 'fast' && (lang === 'zh' ? 
+                    '⚡ 最快模式：优先选择速度快的成员，实现并行工作' : 
+                    '⚡ Fastest Mode: Prioritizes fast members for parallel work'
+                  )}
+                  {assignMode === 'balanced' && (lang === 'zh' ? 
+                    '⚖️ 均衡模式：平衡速度与成本，考虑并行性' : 
+                    '⚖️ Balanced Mode: Balances speed and cost with parallel work'
+                  )}
+                  {assignMode === 'slow' && (lang === 'zh' ? 
+                    '💰 最便宜模式：选择时薪最低的成员，不考虑时间' : 
+                    '💰 Cheapest Mode: Selects lowest hourly rate members, time not considered'
+                  )}
+                </div>
+                
+                {/* 总金额显示 */}
+                {costInfo && Object.keys(selectedMembers).length > 0 && (
+                  <div style={{
+                    marginTop: 16,
+                    padding: '16px 0',
+                    borderTop: '1px solid #e2e8f0'
+                  }}>
+                    <div style={{
+                      fontSize: 18,
+                      fontWeight: 600,
+                      color: '#1e293b',
+                      marginBottom: 8
+                    }}>
+                      {lang === 'zh' ? '💰 预计总金额' : '💰 Estimated Total Cost'}
+                    </div>
+                    <div style={{
+                      background: '#fff',
+                      padding: '12px 16px',
+                      borderRadius: 8,
+                      border: '1px solid #e2e8f0',
+                      display: 'inline-block',
+                      minWidth: 200
+                    }}>
+                      <div style={{ fontSize: 14, color: '#64748b', marginBottom: 4 }}>
+                        {t.totalCost}
+                      </div>
+                      <div style={{ fontSize: 24, fontWeight: 700, color: '#16a34a' }}>
+                        ¥{costInfo.totalCost.toLocaleString()}
+                      </div>
+                      <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
+                        {lang === 'zh' 
+                          ? `平均时薪: ¥${costInfo.averageHourlyRate.toFixed(0)}/小时`
+                          : `Avg Rate: ¥${costInfo.averageHourlyRate.toFixed(0)}/h`
+                        }
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
                 <div style={{
                   fontSize: 12,
                   color: '#64748b',
@@ -946,22 +1342,213 @@ export default function TaskPlanner() {
                 className="btn"
                 onClick={async () => {
                   try {
+                    console.log('=== 开始分配任务 ===');
+                    console.log('当前dbOrderId:', dbOrderId);
+                    console.log('当前tasks:', tasks);
+                    console.log('当前selectedMembers:', selectedMembers);
+                    
                     const assignments = Object.entries(selectedMembers).map(([taskIdx, memberId]) => ({
                       taskId: tasks[parseInt(taskIdx)].id,
                       memberId
                     }));
-                    const res = await fetch('/api/assign-tasks', {
+                    console.log('构建的assignments:', assignments);
+                    
+                    // 强制为所有任务分配开发者
+                    console.log('=== 强制分配所有任务 ===');
+                    console.log('任务数量:', tasks.length);
+                    console.log('已选择的成员:', selectedMembers);
+                    
+                    // 为每个任务分配开发者
+                    const allAssignments = [];
+                    for (let i = 0; i < tasks.length; i++) {
+                      const task = tasks[i];
+                      let memberId = selectedMembers[i];
+                      
+                      // 如果没有手动选择，则自动选择
+                      if (!memberId) {
+                        console.log(`任务 ${i} 未选择开发者，自动选择...`);
+                        const taskRecommendations = smartMatchDevelopersForTask(task, teamData, {}, 'fast');
+                        if (taskRecommendations.length > 0) {
+                          memberId = taskRecommendations[0].member.id;
+                          console.log(`✅ 自动选择任务 ${i} 的开发者: ${taskRecommendations[0].member.name} (ID: ${memberId})`);
+                        } else {
+                          // 如果还是没有，选择第一个团队成员
+                          if (teamData.length > 0) {
+                            memberId = teamData[0].id;
+                            console.log(`⚠️ 使用默认开发者: ${teamData[0].name} (ID: ${memberId})`);
+                          }
+                        }
+                      }
+                      
+                      if (memberId) {
+                        allAssignments.push({
+                          taskId: task.id,
+                          memberId: memberId
+                        });
+                        console.log(`✅ 任务 ${i} (${(task as any).name_zh || (task as any).title_zh || task.title}) 分配给开发者 ${memberId}`);
+                      }
+                    }
+                    
+                    console.log('所有分配结果:', allAssignments);
+                    assignments.length = 0;
+                    assignments.push(...allAssignments);
+                    
+                    // === 完整的任务分配流程 ===
+                    console.log('开始完整的任务分配流程...');
+                    
+                    // 1. 读取当前数据
+                    const savedTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+                    const savedOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+                    // 直接使用组件状态中的 teamData，确保数据一致性
+                    const currentTeamMembers = teamData;
+                    
+                    console.log('当前数据状态:');
+                    console.log('- 任务数量:', savedTasks.length);
+                    console.log('- 订单数量:', savedOrders.length);
+                    console.log('- 成员数量 (来自组件状态):', currentTeamMembers.length);
+                    console.log('- 成员数据示例 (来自组件状态):', currentTeamMembers.slice(0, 5).map(m => ({ id: m.id, name: m.name })));
+                    
+                    // 2. 验证数据完整性
+                    if (savedTasks.length === 0) {
+                      throw new Error('没有找到任务数据，请重新进行任务分解');
+                    }
+                    
+                    if (currentTeamMembers.length === 0) {
+                      throw new Error('没有找到团队成员数据');
+                    }
+                    
+                    // 3. 更新任务分配
+                    let assignedCount = 0;
+                    assignments.forEach(({ taskId, memberId }) => {
+                      const taskIndex = savedTasks.findIndex((t: any) => t.id === taskId);
+                      const member = currentTeamMembers.find((m: any) => String(m.id) === String(memberId));
+                      
+                      console.log(`分配任务 ${taskId} 给成员 ${memberId}:`);
+                      console.log('- 任务索引:', taskIndex);
+                      console.log('- 找到成员:', member ? member.name : '未找到');
+                      
+                      if (taskIndex !== -1 && member) {
+                        const originalTask = savedTasks[taskIndex];
+                        
+                        // 调试任务名称问题
+                        console.log(`原始任务数据 (ID: ${originalTask.id}):`, { 
+                          title: originalTask.title, 
+                          title_zh: originalTask.title_zh,
+                          name_zh: originalTask.name_zh,
+                          name: originalTask.name
+                        });
+                        
+                        savedTasks[taskIndex] = {
+                          ...originalTask,
+                          assigned_member_id: memberId,
+                          status: 'PENDING', // 等待接受
+                          assigned_at: new Date().toISOString(),
+                          assigned_member_name: member.name
+                        };
+                        assignedCount++;
+                        console.log(`✅ 任务 "${originalTask.name_zh || originalTask.title_zh || originalTask.title}" 分配给 ${member.name} (ID: ${memberId})`);
+                        console.log(`✅ 更新后任务数据:`, savedTasks[taskIndex]);
+                      } else {
+                        console.log(`❌ 分配失败 - 任务ID: ${taskId}, 成员ID: ${memberId}`);
+                        console.log(`❌ 任务索引: ${taskIndex}, 成员: ${member ? '找到' : '未找到'}`);
+                      }
+                    });
+                    
+                    console.log(`任务分配完成: ${assignedCount}/${assignments.length}`);
+                    
+                    // 4. 更新订单状态
+                    const orderIndex = savedOrders.findIndex((o: any) => o.id === dbOrderId);
+                    if (orderIndex !== -1) {
+                      savedOrders[orderIndex] = {
+                        ...savedOrders[orderIndex],
+                        status: '进行中',
+                        assigned_at: new Date().toISOString(),
+                        total_assigned_tasks: assignedCount
+                      };
+                      console.log(`✅ 订单 ${dbOrderId} 状态更新为"进行中"`);
+                    } else {
+                      console.log(`❌ 未找到订单 ${dbOrderId}`);
+                    }
+                    
+                    // 5. 保存所有数据
+                    localStorage.setItem('tasks', JSON.stringify(savedTasks));
+                    localStorage.setItem('orders', JSON.stringify(savedOrders));
+                    
+                    // 6. 验证保存结果
+                    const verifyTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+                    const assignedTasks = verifyTasks.filter((t: any) => t.assigned_member_id);
+                    console.log(`✅ 验证结果: ${assignedTasks.length} 个任务已分配成员`);
+                    
+                    // 详细验证每个分配的任务
+                    assignedTasks.forEach((task: any, index: number) => {
+                      console.log(`验证任务 ${index + 1}:`, {
+                        id: task.id,
+                        name: task.name_zh || task.title_zh || task.title,
+                        assigned_member_id: task.assigned_member_id,
+                        assigned_member_name: task.assigned_member_name,
+                        status: task.status
+                      });
+                    });
+                    
+                    // 额外验证：检查所有任务的数据完整性
+                    console.log('=== 任务数据完整性检查 ===');
+                    savedTasks.forEach((task: any, index: number) => {
+                      console.log(`任务 ${index + 1} 数据:`, {
+                        id: task.id,
+                        title: task.title,
+                        title_zh: task.title_zh,
+                        name_zh: task.name_zh,
+                        assigned_member_id: task.assigned_member_id,
+                        status: task.status
+                      });
+                    });
+                    
+                                        // 7. 同步数据到服务器（确保API能访问到数据）
+                    try {
+                      console.log('=== 开始数据同步 ===');
+                      console.log('同步的订单数量:', savedOrders.length);
+                      console.log('同步的任务数量:', savedTasks.length);
+                      console.log('同步的分配数量:', assignments.length);
+                      
+                      // 先同步订单和任务数据
+                      const syncDataRes = await fetch('/api/orders', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        assignments,
-                        orderId: dbOrderId
-                      })
-                    });
-                    const data = await res.json();
-                    if (data.error) {
-                      throw new Error(data.error);
+                        body: JSON.stringify({
+                          clientOrders: savedOrders,
+                          clientTasks: savedTasks
+                        })
+                      });
+                      
+                      if (syncDataRes.ok) {
+                        console.log('✅ 订单和任务数据同步成功');
+                        
+                        // 等待一下确保数据已保存
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                        
+                        // 然后同步任务分配
+                        const syncAssignRes = await fetch('/api/assign-tasks', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            assignments,
+                            orderId: dbOrderId
+                          })
+                        });
+                        
+                        if (syncAssignRes.ok) {
+                          console.log('✅ 任务分配同步成功');
+                        } else {
+                          console.log('⚠️ 任务分配同步失败，但本地数据已保存');
+                        }
+                      } else {
+                        console.log('⚠️ 数据同步失败，但本地数据已保存');
+                      }
+                    } catch (syncError) {
+                      console.log('⚠️ 服务器同步出错，但本地数据已保存:', syncError);
                     }
+                    
+                    // 跳转到结果页面
                   router.push({
                     pathname: '/result',
                     query: {
@@ -1157,7 +1744,14 @@ export default function TaskPlanner() {
                   <div style={{color:'#888', textAlign:'center', padding:'40px 0'}}>{t.noOrder}</div>
                 ) : (
                   <div style={{display:'grid', gap:16}}>
-                    {orders.map((order) => (
+                    {orders
+                      .sort((a, b) => {
+                        // 按订单ID降序排序（新的在前）
+                        const timeA = parseInt(a.id) || 0;
+                        const timeB = parseInt(b.id) || 0;
+                        return timeB - timeA;
+                      })
+                      .map((order) => (
                       <div key={order.id} style={{
                         border: '1px solid #e5e7eb', borderRadius: 8, padding: 16,
                         background: '#fff', transition: 'all 0.2s'
@@ -1254,15 +1848,116 @@ export default function TaskPlanner() {
 
           {/* 成员详情弹窗 */}
           {selectedMember && popupPos && (
-            <div style={{
-              position: 'fixed', left: popupPos.x, top: popupPos.y, zIndex: 5000,
-              background: '#fff', borderRadius: 8, boxShadow: '0 4px 16px rgba(0,0,0,0.15)', padding: 16, minWidth: 200
-            }}>
-              <div style={{fontWeight:600, marginBottom:8}}>{selectedMember.name}</div>
-              <div style={{fontSize:14, color:'#666', marginBottom:4}}>{lang === 'zh' ? '角色：' : 'Role: '}{selectedMember.roles.join(', ')}</div>
-              <div style={{fontSize:14, color:'#666', marginBottom:4}}>{lang === 'zh' ? '时薪：' : 'Hourly Rate: '}{selectedMember.hourly_rate} {lang === 'zh' ? '元' : 'CNY'}</div>
-              <div style={{fontSize:14, color:'#666', marginBottom:4}}>{lang === 'zh' ? '速度倍率：' : 'Speed Factor: '}{selectedMember.speed_factor}</div>
-              <div style={{fontSize:14, color:'#666'}}>{lang === 'zh' ? '经验分数：' : 'Experience: '}{selectedMember.experience_score}</div>
+            <div 
+              style={{
+                position: 'fixed',
+                left: popupPos.x,
+                top: popupPos.y,
+                zIndex: 5000,
+                background: '#fff',
+                borderRadius: 8,
+                boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+                border: '1px solid #e2e8f0',
+                padding: 16,
+                minWidth: 240,
+                maxWidth: 280
+              }}
+            >
+              {/* 成员名称 */}
+              <div style={{
+                fontWeight: 600,
+                fontSize: 16,
+                marginBottom: 12,
+                color: '#1e293b'
+              }}>
+                {lang === 'zh' ? selectedMember.name : (selectedMember.name_en || selectedMember.name)}
+              </div>
+              
+              {/* 成员信息 */}
+              <div style={{ fontSize: 14, color: '#64748b', lineHeight: 1.5 }}>
+                <div style={{ marginBottom: 6 }}>
+                  <span style={{ fontWeight: 500 }}>{lang === 'zh' ? '角色：' : 'Role: '}</span>
+                  {translateRoles(selectedMember.roles, lang).join(', ')}
+                </div>
+                <div style={{ marginBottom: 6 }}>
+                  <span style={{ fontWeight: 500 }}>{lang === 'zh' ? '技能：' : 'Skills: '}</span>
+                  {translateSkills(selectedMember.skills, lang).join(', ')}
+                </div>
+                <div style={{ marginBottom: 6 }}>
+                  <span style={{ fontWeight: 500 }}>{lang === 'zh' ? '时薪：' : 'Rate: '}</span>
+                  {selectedMember.hourly_rate} {lang === 'zh' ? '元' : 'CNY'}
+                </div>
+                <div style={{ marginBottom: 6 }}>
+                  <span style={{ fontWeight: 500 }}>{lang === 'zh' ? '速度：' : 'Speed: '}</span>
+                  {selectedMember.speed_factor}
+                </div>
+                <div style={{ marginBottom: 6 }}>
+                  <span style={{ fontWeight: 500 }}>{lang === 'zh' ? '经验：' : 'Exp: '}</span>
+                  {selectedMember.experience_score}
+                </div>
+                <div style={{ marginBottom: 12 }}>
+                  <span style={{ fontWeight: 500 }}>{lang === 'zh' ? '可用：' : 'Available: '}</span>
+                  {selectedMember.available_hours.join(', ')} {lang === 'zh' ? '小时' : 'h'}
+                </div>
+              </div>
+              
+              {/* 选择按钮 */}
+              <button
+                style={{
+                  background: '#1890ff',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 6,
+                  padding: '8px 16px',
+                  fontSize: 14,
+                  cursor: 'pointer',
+                  width: '100%',
+                  fontWeight: 600,
+                  transition: 'background-color 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = '#40a9ff'}
+                onMouseLeave={(e) => e.currentTarget.style.background = '#1890ff'}
+                onClick={() => {
+                  if (popupTaskIdx !== null) {
+                    setSelectedMembers(prev => ({ ...prev, [popupTaskIdx]: selectedMember.id }));
+                  }
+                  setSelectedMember(null);
+                  setPopupPos(null);
+                  setPopupTaskIdx(null);
+                }}
+              >
+                {lang === 'zh' ? '选择该成员' : 'Select Member'}
+              </button>
+              
+              {/* 关闭按钮 */}
+              <button
+                style={{
+                  position: 'absolute',
+                  top: 8,
+                  right: 8,
+                  background: 'none',
+                  border: 'none',
+                  fontSize: 18,
+                  color: '#94a3b8',
+                  cursor: 'pointer',
+                  width: 24,
+                  height: 24,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: '50%',
+                  transition: 'background-color 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                onClick={() => {
+                  setSelectedMember(null);
+                  setPopupPos(null);
+                  setPopupTaskIdx(null);
+                }}
+              >
+                ×
+              </button>
             </div>
           )}
 

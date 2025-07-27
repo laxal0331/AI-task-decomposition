@@ -192,8 +192,41 @@ export function smartMatchDevelopersForTask(
   assignedTasks: { [memberId: string]: number[] },
   assignMode: 'fast' | 'balanced' | 'slow'
 ): SmartMatchResult[] {
-  // 过滤有该角色的成员
-  const candidates = allMembers.filter(m => m.roles.includes(task.role));
+  // 导入角色映射
+  const { roleMap } = require('./teamData');
+  
+  // 先尝试直接匹配
+  let candidates = allMembers.filter(m =>
+    m.roles.some(r => r === task.role)
+  );
+  
+  // 如果直接匹配失败，尝试角色映射
+  if (candidates.length === 0) {
+    const mappedRole = roleMap[task.role];
+    if (mappedRole) {
+      candidates = allMembers.filter(m =>
+        m.roles.some(r => r === mappedRole)
+      );
+    }
+  }
+  
+  // 如果映射匹配也失败，尝试分词匹配
+  if (candidates.length === 0) {
+    const taskRoleWords = task.role.split(/[\\/、 ,，]/).filter(Boolean);
+    candidates = allMembers.filter(m =>
+      m.roles.some(r => {
+        const memberRoleWords = r.split(/[\\/、 ,，]/).filter(Boolean);
+        return memberRoleWords.some(mw =>
+          taskRoleWords.some(tw => mw.includes(tw) || tw.includes(mw))
+        );
+      })
+    );
+  }
+  
+  // 如果还是没有匹配到成员，再用杂项专员兜底
+  if (candidates.length === 0) {
+    candidates = allMembers.filter(m => m.roles.includes('杂项专员'));
+  }
   // 计算基准时薪
   const baseHourlyRate = allMembers.reduce((sum, m) => sum + m.hourly_rate, 0) / allMembers.length;
   // 计算基准速度
@@ -214,14 +247,17 @@ export function smartMatchDevelopersForTask(
   });
   // 按模式排序
   if (assignMode === 'fast') {
-    // 越快越好：优先速度倍率高的成员，整体速度越快越好
     results.sort((a, b) => {
-      if (b.member.speed_factor !== a.member.speed_factor) return b.member.speed_factor - a.member.speed_factor;
+      // 速度因子差异的权重更高
+      const speedDiff = b.member.speed_factor - a.member.speed_factor;
+      if (Math.abs(speedDiff) > 0.1) {
+        return speedDiff; // 速度差异明显时，优先按速度排序
+      }
+      // 速度相近时，考虑可用性和成本
       if (a.nextAvailableWeek !== b.nextAvailableWeek) return a.nextAvailableWeek - b.nextAvailableWeek;
       return a.member.hourly_rate - b.member.hourly_rate;
     });
   } else if (assignMode === 'balanced') {
-    // 均衡：速度倍率和时薪都接近平均值
     results.sort((a, b) => {
       const aScore = Math.abs(a.member.speed_factor - baseSpeed) + Math.abs(a.member.hourly_rate - baseHourlyRate) / baseHourlyRate;
       const bScore = Math.abs(b.member.speed_factor - baseSpeed) + Math.abs(b.member.hourly_rate - baseHourlyRate) / baseHourlyRate;
@@ -229,11 +265,11 @@ export function smartMatchDevelopersForTask(
       return b.totalAvailable - a.totalAvailable;
     });
   } else {
-    // 慢慢来：优先时薪低的成员，整体越便宜越好
     results.sort((a, b) => {
+      // 最便宜模式：优先考虑时薪，不考虑时间
       if (a.member.hourly_rate !== b.member.hourly_rate) return a.member.hourly_rate - b.member.hourly_rate;
-      if (a.nextAvailableWeek !== b.nextAvailableWeek) return a.nextAvailableWeek - b.nextAvailableWeek;
-      return b.member.speed_factor - a.member.speed_factor;
+      // 时薪相同时，考虑可用性
+      return b.totalAvailable - a.totalAvailable;
     });
   }
   return results;

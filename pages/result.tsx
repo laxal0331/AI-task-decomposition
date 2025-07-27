@@ -112,6 +112,18 @@ export default function ResultPage() {
   const [finishedType, setFinishedType] = useState<'cancelled' | 'delivered' | null>(null);
   const [orderStatus, setOrderStatus] = useState<string | null>(null);
 
+  // 自动跳转到任务分配页面（未开始状态）
+  useEffect(() => {
+    if (orderStatus === '未开始' || orderStatus === 'NOT_STARTED') {
+      if (router.query.orderId) {
+        router.replace({
+          pathname: '/task-planner',
+          query: { orderId: router.query.orderId }
+        });
+      }
+    }
+  }, [orderStatus, router]);
+
   // 动态渲染交替镜像背景strip
   const [strips, setStrips] = useState<number[]>([]);
   useEffect(() => {
@@ -130,15 +142,85 @@ export default function ResultPage() {
   }, []);
 
   useEffect(() => {
-    // 优先从数据库获取订单数据
+    // 立即检查localStorage中的订单状态
     if (router.query.orderId) {
-      fetchOrderData(router.query.orderId as string);
+      const savedOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+      const order = savedOrders.find((o: any) => o.id === router.query.orderId);
+      if (order) {
+        console.log('找到订单，状态:', order.status);
+        // 立即设置状态，不管是什么状态
+        setOrderStatus(order.status);
+        
+        if (order.status === '已交付' || order.status === 'Delivered' || order.status === 'delivered' || 
+            order.status === '已取消' || order.status === 'Cancelled' || order.status === 'cancelled') {
+          console.log('订单已是最终状态，直接加载数据');
+          tryLoadFromLocalStorage(router.query.orderId as string);
+        } else {
+          console.log('订单不是最终状态，正常获取数据');
+          fetchOrderData(router.query.orderId as string);
+        }
+      } else {
+        console.log('localStorage中未找到订单，从API获取');
+        fetchOrderData(router.query.orderId as string);
+      }
     }
+    // 获取团队成员数据
+    fetchTeamMembers();
+    
+    // 强制从localStorage同步最新数据
+    const forceSyncFromLocalStorage = () => {
+      if (router.query.orderId) {
+        console.log('=== 强制从localStorage同步数据 ===');
+        tryLoadFromLocalStorage(router.query.orderId as string);
+      }
+    };
+    
+    // 延迟500ms执行，确保页面完全加载
+    setTimeout(forceSyncFromLocalStorage, 500);
   }, [router.query.orderId, router.query.data]);
 
-  // 添加实时刷新功能
+  // 获取团队成员数据
+  const fetchTeamMembers = async () => {
+    try {
+      const res = await fetch('/api/members');
+      const data = await res.json();
+      if (data.members && data.members.length > 0) {
+        console.log('从API获取到团队成员数量:', data.members.length);
+        console.log('团队成员示例:', data.members.slice(0, 3).map((m: any) => ({
+          id: m.id,
+          name: m.name,
+          roles: m.roles
+        })));
+        setTeamData(data.members);
+      } else {
+        // API返回空数据，从localStorage获取
+        console.log('API返回空成员数据，从localStorage获取...');
+        const savedMembers = JSON.parse(localStorage.getItem('teamMembers') || '[]');
+        if (savedMembers.length > 0) {
+          console.log('从localStorage获取到团队成员数量:', savedMembers.length);
+          setTeamData(savedMembers);
+        }
+      }
+    } catch (error) {
+      console.error('获取团队成员失败:', error);
+      // API调用失败，从localStorage获取
+      const savedMembers = JSON.parse(localStorage.getItem('teamMembers') || '[]');
+      if (savedMembers.length > 0) {
+        console.log('API失败，从localStorage获取团队成员:', savedMembers.length);
+        setTeamData(savedMembers);
+      }
+    }
+  };
+
+  // 添加实时刷新功能（仅在非最终状态时）
   useEffect(() => {
     if (!router.query.orderId) return;
+    
+    // 检查当前状态，如果是最终状态则不刷新
+    if (orderStatus && ['已交付', 'Delivered', 'delivered', '已取消', 'Cancelled', 'cancelled'].includes(orderStatus)) {
+      console.log('订单已是最终状态，停止自动刷新');
+      return;
+    }
     
     // 每5秒刷新一次数据
     const interval = setInterval(() => {
@@ -146,7 +228,7 @@ export default function ResultPage() {
     }, 5000);
     
     return () => clearInterval(interval);
-  }, [router.query.orderId]);
+  }, [router.query.orderId, orderStatus]);
 
   useEffect(() => {
     async function fetchMembers() {
@@ -165,6 +247,9 @@ export default function ResultPage() {
       
       if (data.error) {
         console.error('Fetch order error:', data.error);
+        // API调用失败，尝试从localStorage读取
+        console.log('尝试从localStorage读取数据...');
+        tryLoadFromLocalStorage(orderId);
         return;
       }
       
@@ -174,10 +259,56 @@ export default function ResultPage() {
         orderId: orderId
       });
       if (data.order && data.order.status) {
+        console.log('API返回的订单状态:', data.order.status);
         setOrderStatus(data.order.status);
       }
     } catch (error) {
       console.error('Fetch order error:', error);
+      // API调用失败，尝试从localStorage读取
+      console.log('API调用失败，尝试从localStorage读取数据...');
+      tryLoadFromLocalStorage(orderId);
+    }
+  };
+
+  // 从localStorage读取数据的备用方法
+  const tryLoadFromLocalStorage = (orderId: string) => {
+    try {
+      const savedOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+      const savedTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+      
+      console.log('localStorage中订单数量:', savedOrders.length);
+      console.log('localStorage中任务数量:', savedTasks.length);
+      
+      const order = savedOrders.find((o: any) => o.id === orderId);
+      const orderTasks = savedTasks.filter((t: any) => t.order_id === orderId);
+      
+      if (order) {
+        console.log('从localStorage找到订单:', order);
+        console.log('从localStorage找到任务数量:', orderTasks.length);
+        
+        // 调试任务数据
+        console.log('=== 结果页面任务数据调试 ===');
+        orderTasks.forEach((task: any, index: number) => {
+                                  console.log(`任务 ${index}:`, {
+                          id: task.id,
+                          name: task.name_zh || task.title_zh || task.title,
+                          assigned_member_id: task.assigned_member_id,
+                          status: task.status
+                        });
+        });
+        
+        setData({
+          tasks: orderTasks,
+          selectedMembers: {},
+          orderId: orderId
+        });
+        console.log('localStorage中的订单状态:', order.status);
+        setOrderStatus(order.status);
+      } else {
+        console.log('localStorage中未找到订单:', orderId);
+      }
+    } catch (error) {
+      console.error('从localStorage读取数据失败:', error);
     }
   };
 
@@ -187,19 +318,47 @@ export default function ResultPage() {
     setFinishedType('cancelled');
     setFinished(true);
     setShowFinishModal(false);
+    setOrderStatus('已取消'); // 立即本地隐藏按钮
+    
+    // 立即更新localStorage中的订单状态
+    const savedOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+    const orderIndex = savedOrders.findIndex((o: any) => o.id === data.orderId);
+    if (orderIndex !== -1) {
+      savedOrders[orderIndex] = { ...savedOrders[orderIndex], status: '已取消' };
+      localStorage.setItem('orders', JSON.stringify(savedOrders));
+      console.log('已更新localStorage中的订单状态为已取消');
+    }
+    
     try {
+      // 先同步localStorage到服务器
+      await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientOrders: savedOrders,
+          clientTasks: JSON.parse(localStorage.getItem('tasks') || '[]')
+        })
+      });
       const status = lang === 'zh' ? '已取消' : 'Cancelled';
+      
+      // 获取当前订单数据
+      const currentOrder = savedOrders.find((o: any) => o.id === data.orderId);
+      
       const res = await fetch(`/api/orders/${data.orderId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ 
+          status,
+          orderData: currentOrder // 同时发送订单数据
+        }),
       });
       if (!res.ok) {
         alert(lang === 'zh' ? '取消订单失败' : 'Failed to cancel order');
       } else {
-        fetchOrderData(data.orderId);
+        console.log('取消订单成功');
       }
     } catch (error) {
+      console.error('取消订单异常:', error);
       alert(lang === 'zh' ? '取消订单失败' : 'Failed to cancel order');
     }
   };
@@ -210,20 +369,118 @@ export default function ResultPage() {
     setFinishedType('delivered');
     setFinished(true);
     setShowDeliverModal(false);
+    setOrderStatus('已交付'); // 立即本地隐藏按钮
+    
+    // 立即更新localStorage中的订单状态
+    const savedOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+    const orderIndex = savedOrders.findIndex((o: any) => o.id === data.orderId);
+    if (orderIndex !== -1) {
+      savedOrders[orderIndex] = { ...savedOrders[orderIndex], status: '已交付' };
+      localStorage.setItem('orders', JSON.stringify(savedOrders));
+      console.log('已更新localStorage中的订单状态为已交付');
+    }
+    
     try {
+      console.log('=== 开始交付订单流程 ===');
+      console.log('订单ID:', data.orderId);
+      
+      // 先同步localStorage到服务器
+      const syncRes = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientOrders: savedOrders,
+          clientTasks: JSON.parse(localStorage.getItem('tasks') || '[]')
+        })
+      });
+      
+      if (!syncRes.ok) {
+        console.error('数据同步失败:', syncRes.status, syncRes.statusText);
+        alert(lang === 'zh' ? '数据同步失败' : 'Data sync failed');
+        return;
+      }
+      
+      console.log('数据同步成功');
+      
+      // 等待一下确保数据同步完成
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       const status = lang === 'zh' ? '已交付' : 'Delivered';
+      console.log('发送PATCH请求，状态:', status);
+      
+      // 获取当前订单数据
+      const currentOrder = savedOrders.find((o: any) => o.id === data.orderId);
+      
       const res = await fetch(`/api/orders/${data.orderId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ 
+          status,
+          orderData: currentOrder // 同时发送订单数据
+        }),
       });
+      
+      console.log('PATCH响应状态:', res.status);
+      
       if (!res.ok) {
+        const errorText = await res.text();
+        console.error('PATCH请求失败:', res.status, errorText);
         alert(lang === 'zh' ? '交付订单失败' : 'Failed to deliver order');
       } else {
-        fetchOrderData(data.orderId);
+        console.log('交付订单成功');
       }
     } catch (error) {
+      console.error('交付订单异常:', error);
       alert(lang === 'zh' ? '交付订单失败' : 'Failed to deliver order');
+    }
+  };
+
+  // 重新分配任务
+  const handleReassignTask = async (taskId: string, memberId: string) => {
+    try {
+      console.log('重新分配任务:', taskId, '给成员:', memberId);
+      
+      // 更新localStorage中的任务
+      const savedTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+      const taskIndex = savedTasks.findIndex((t: any) => t.id === taskId);
+      
+      if (taskIndex !== -1) {
+        // 找到对应的成员信息
+        const member = teamData.find((m: any) => m.id === memberId);
+        const displayName = lang === 'zh' 
+          ? member?.name 
+          : (member?.name_en || member?.name);
+        
+        // 更新任务分配
+        savedTasks[taskIndex] = {
+          ...savedTasks[taskIndex],
+          assigned_member_id: memberId,
+          assigned_member_name: displayName
+        };
+        
+        // 保存到localStorage
+        localStorage.setItem('tasks', JSON.stringify(savedTasks));
+        
+        // 同步到服务器
+        await fetch('/api/orders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            clientOrders: JSON.parse(localStorage.getItem('orders') || '[]'),
+            clientTasks: savedTasks
+          })
+        });
+        
+        // 刷新页面数据
+        if (data?.orderId) {
+          fetchOrderData(data.orderId);
+        }
+        
+        console.log('任务重新分配成功');
+      }
+    } catch (error) {
+      console.error('重新分配任务失败:', error);
+      alert(lang === 'zh' ? '重新分配失败' : 'Failed to reassign task');
     }
   };
 
@@ -481,7 +738,7 @@ export default function ResultPage() {
                       }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                           <div>
-                            <div style={{ fontWeight: 600, fontSize: 18 }}>{lang === 'zh' ? (task.title_zh || task.title || '') : (task.title_en || task.title || '')}</div>
+                            <div style={{ fontWeight: 600, fontSize: 18 }}>{lang === 'zh' ? (task.title_zh || task.title || task.name_zh || '') : (task.title_en || task.title || task.name_en || '')}</div>
                             <div style={{ 
                               margin: '8px 0', 
                               color: taskStatusColor.text,
@@ -512,12 +769,79 @@ export default function ResultPage() {
                               {t.member}：
                               {(() => {
                                 const memberId = task.assigned_member_id;
-                                                          if (!memberId) return <span style={{color:'#888'}}>{lang==='zh'?'未分配':'Unassigned'}</span>;
+                                
+                                console.log('=== 成员显示调试 ===');
+                                console.log('任务ID:', task.id);
+                                console.log('分配的成员ID:', memberId);
+                                console.log('团队数据长度:', teamData.length);
+                                
+                                // 如果是"未开始"状态，显示开发者选择界面
+                                if (task.status === '未开始' || task.status === 'NOT_STARTED') {
+                                  return (
+                                    <div style={{ marginTop: 12 }}>
+                                      <div style={{ color: '#1890ff', fontWeight: 500, marginBottom: 8 }}>
+                                        {lang === 'zh' ? '选择开发者：' : 'Select Developer:'}
+                                      </div>
+                                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                                        {teamData.map((member: any) => {
+                                          const isSelected = task.assigned_member_id === member.id;
+                                          const displayName = lang === 'zh' 
+                                            ? member.name 
+                                            : (member.name_en || member.name);
+                                          
+                                          return (
+                                            <button
+                                              key={member.id}
+                                              onClick={() => handleReassignTask(task.id, member.id)}
+                                              style={{
+                                                background: isSelected ? '#1890ff' : '#f1f5f9',
+                                                color: isSelected ? '#fff' : '#333',
+                                                border: '1px solid #ddd',
+                                                borderRadius: 6,
+                                                padding: '6px 12px',
+                                                fontSize: 12,
+                                                cursor: 'pointer',
+                                                fontWeight: isSelected ? 600 : 400
+                                              }}
+                                            >
+                                              {displayName}
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  );
+                                }
+                                
+                                if (!memberId) {
+                                  console.log('未分配成员ID');
+                                  return <span style={{color:'#888'}}>{lang==='zh'?'未分配':'Unassigned'}</span>;
+                                }
+                                
                                 const member = teamData.find(m => String(m.id) === String(memberId));
-                                // 方案一：直接用数据库 name/name_en 字段
+                                console.log('找到的成员:', member);
+                                
+                                if (!member) {
+                                  console.log('在团队数据中未找到成员:', memberId);
+                                  // 尝试从localStorage直接查找
+                                  const savedMembers = JSON.parse(localStorage.getItem('teamMembers') || '[]');
+                                  const fallbackMember = savedMembers.find((m: any) => String(m.id) === String(memberId));
+                                  console.log('localStorage中找到的成员:', fallbackMember);
+                                  
+                                  if (fallbackMember) {
+                                    const displayName = lang === 'zh' 
+                                      ? fallbackMember.name 
+                                      : (fallbackMember.name_en || fallbackMember.name);
+                                    return `${displayName} (ID: ${memberId})`;
+                                  }
+                                  
+                                  return `${lang === 'zh' ? '开发者' : 'Developer'} ${memberId}`;
+                                }
+                                
                                 const displayName = lang === 'zh'
-                                  ? (member ? member.name : `开发者${memberId}`)
-                                  : (member ? member.name_en || `Developer ${memberId}` : `Developer ${memberId}`);
+                                  ? member.name
+                                  : (member.name_en || member.name);
+                                console.log('最终显示名称:', displayName);
                                 return displayName;
                               })()}
                             </div>
@@ -540,7 +864,7 @@ export default function ResultPage() {
                 })}
               </div>
             )}
-            {data?.orderId && orderStatus !== '已交付' && orderStatus !== 'Delivered' && orderStatus !== '已取消' && orderStatus !== 'Cancelled' && (
+            {data?.orderId && orderStatus && orderStatus !== '已交付' && orderStatus !== 'Delivered' && orderStatus !== 'delivered' && orderStatus !== '已取消' && orderStatus !== 'Cancelled' && orderStatus !== 'cancelled' && (
               <div style={{display:'flex', gap: 16, marginBottom: 16}}>
                 <button
                   style={{
