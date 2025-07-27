@@ -214,10 +214,13 @@ export function smartMatchDevelopersForTask(
   });
   // 按模式排序
   if (assignMode === 'fast') {
-    // 越快越好：优先速度倍率高的成员，整体速度越快越好
+    // 最快模式：优先速度倍率高的成员，但也要考虑可用工时
     results.sort((a, b) => {
+      // 首先按速度排序
       if (b.member.speed_factor !== a.member.speed_factor) return b.member.speed_factor - a.member.speed_factor;
-      if (a.nextAvailableWeek !== b.nextAvailableWeek) return a.nextAvailableWeek - b.nextAvailableWeek;
+      // 然后按可用工时排序，确保有足够时间完成任务
+      if (a.totalAvailable !== b.totalAvailable) return b.totalAvailable - a.totalAvailable;
+      // 最后按价格排序
       return a.member.hourly_rate - b.member.hourly_rate;
     });
   } else if (assignMode === 'balanced') {

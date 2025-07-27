@@ -128,7 +128,7 @@ const texts = {
     },
       en: {
       title: 'AI Task Decomposition',
-      mode: 'Assignment Mode:',
+      mode: 'Mode:',
       fast: 'Fastest',
       balanced: 'Balanced',
       slow: 'Lowest Cost',
@@ -322,9 +322,15 @@ export default function TaskPlanner() {
     if (tasks.length === 0) return;
     let autoSelected: { [taskIdx: number]: string } = {};
     if (assignMode === 'fast') {
-      // 越快越好分配逻辑：优先让不同任务分配给不同的人并行开发，只有同一人更快时才分配给同一人
+      // 最快模式：优先分配给不同的人实现并行开发，但考虑任务依赖关系
       const usedMemberIds = new Set<string>();
-      tasks.forEach((task, i) => {
+      const memberWorkloads: { [memberId: string]: number } = {};
+      
+      // 按任务工时降序排列，优先分配大任务
+      const sortedTasks = tasks.map((task, idx) => ({ task, idx }))
+        .sort((a, b) => b.task.estimated_hours - a.task.estimated_hours);
+      
+      sortedTasks.forEach(({ task, idx }) => {
         const mainstreamRoles = [
           '前端工程师', '后端工程师', 'UI设计师', 'UX设计师', '测试工程师', '数据库工程师',
           '产品经理', 'DevOps工程师', '全栈工程师'
@@ -336,29 +342,28 @@ export default function TaskPlanner() {
           assignedTasks,
           assignMode
         ).filter(r => r.canAssign);
-        // 优先分配给未被选中的成员中速度最快的
-        let best: string | null = null;
-        let maxSpeed = -Infinity;
-        let foundUnassigned = false;
-        matchResults.forEach(r => {
-          if (!usedMemberIds.has(r.member.id) && r.member.speed_factor > maxSpeed) {
-            maxSpeed = r.member.speed_factor;
-            best = r.member.id;
-            foundUnassigned = true;
-          }
+        
+        // 计算每个候选成员的总工作量（包括已分配的任务）
+        const candidatesWithWorkload = matchResults.map(r => {
+          const currentWorkload = memberWorkloads[r.member.id] || 0;
+          const effectiveHours = Math.ceil(task.estimated_hours / r.member.speed_factor);
+          const totalWorkload = currentWorkload + effectiveHours;
+          return { ...r, totalWorkload, effectiveHours };
         });
-        // 如果所有成员都已分配过，则在所有可分配成员中选速度最快的
-        if (!foundUnassigned) {
-          matchResults.forEach(r => {
-            if (r.member.speed_factor > maxSpeed) {
-              maxSpeed = r.member.speed_factor;
-              best = r.member.id;
-            }
-          });
-        }
+        
+        // 优先选择总工作量最小的成员（实现更好的负载均衡）
+        candidatesWithWorkload.sort((a, b) => {
+          if (a.totalWorkload !== b.totalWorkload) {
+            return a.totalWorkload - b.totalWorkload;
+          }
+          // 如果工作量相同，优先选择速度更快的
+          return b.member.speed_factor - a.member.speed_factor;
+        });
+        
+        const best = candidatesWithWorkload[0];
         if (best) {
-          autoSelected[i] = best;
-          usedMemberIds.add(best);
+          autoSelected[idx] = best.member.id;
+          memberWorkloads[best.member.id] = (memberWorkloads[best.member.id] || 0) + best.effectiveHours;
         }
       });
     } else if (assignMode === 'balanced') {
@@ -396,6 +401,7 @@ export default function TaskPlanner() {
         }
       });
     } else {
+      // 最便宜模式：只考虑价格，不考虑时间
       tasks.forEach((task, i) => {
         const mainstreamRoles = [
           '前端工程师', '后端工程师', 'UI设计师', 'UX设计师', '测试工程师', '数据库工程师',
@@ -407,9 +413,12 @@ export default function TaskPlanner() {
           teamData,
           assignedTasks,
           assignMode
-        );
-        const match = matchResults.find(r => r.canAssign);
-        if (match) autoSelected[i] = match.member.id;
+        ).filter(r => r.canAssign);
+        
+        // 按价格排序，选择最便宜的
+        matchResults.sort((a, b) => a.member.hourly_rate - b.member.hourly_rate);
+        const cheapest = matchResults[0];
+        if (cheapest) autoSelected[i] = cheapest.member.id;
       });
     }
     setSelectedMembers(autoSelected);
@@ -459,27 +468,74 @@ export default function TaskPlanner() {
   const calculateEstimatedCompletionTime = () => {
     if (tasks.length === 0) return null;
     
-    // 计算总工时
-    const totalHours = tasks.reduce((sum, task) => sum + task.estimated_hours, 0);
-    
-    // 假设每天工作8小时，每周工作5天
     const hoursPerDay = 8;
     const daysPerWeek = 5;
     const hoursPerWeek = hoursPerDay * daysPerWeek; // 40小时/周
     
-    // 计算需要的周数
-    const weeksNeeded = Math.ceil(totalHours / hoursPerWeek);
+    // 根据分配模式计算实际完成时间
+    if (assignMode === 'fast' || assignMode === 'balanced') {
+      // 最快和均衡模式：考虑并行开发，计算最长路径
+      const memberWorkloads: { [memberId: string]: number } = {};
+      
+      // 统计每个成员的工作量
+      Object.entries(selectedMembers).forEach(([taskIdx, memberId]) => {
+        if (memberId && tasks[parseInt(taskIdx)]) {
+          const task = tasks[parseInt(taskIdx)];
+          const member = teamData.find(m => m.id === memberId);
+          if (member) {
+            const effectiveHours = Math.ceil(task.estimated_hours / member.speed_factor);
+            memberWorkloads[memberId] = (memberWorkloads[memberId] || 0) + effectiveHours;
+          }
+        }
+      });
+      
+      // 找到工作量最大的成员，这决定了总时间
+      const maxWorkload = Math.max(...Object.values(memberWorkloads), 0);
+      const weeksNeeded = Math.ceil(maxWorkload / hoursPerWeek);
+      const daysNeeded = Math.ceil(maxWorkload / hoursPerDay);
+      
+      return {
+        totalHours: maxWorkload,
+        weeksNeeded,
+        daysNeeded,
+        hoursPerDay,
+        hoursPerWeek,
+        isParallel: true
+      };
+    } else {
+      // 最便宜模式：不考虑时间，只计算总工时
+      const totalHours = tasks.reduce((sum, task) => sum + task.estimated_hours, 0);
+      const weeksNeeded = Math.ceil(totalHours / hoursPerWeek);
+      const daysNeeded = Math.ceil(totalHours / hoursPerDay);
+      
+      return {
+        totalHours,
+        weeksNeeded,
+        daysNeeded,
+        hoursPerDay,
+        hoursPerWeek,
+        isParallel: false
+      };
+    }
+  };
+
+  // 计算总成本
+  const calculateTotalCost = () => {
+    if (tasks.length === 0) return 0;
     
-    // 计算天数
-    const daysNeeded = Math.ceil(totalHours / hoursPerDay);
+    let totalCost = 0;
+    Object.entries(selectedMembers).forEach(([taskIdx, memberId]) => {
+      if (memberId && tasks[parseInt(taskIdx)]) {
+        const task = tasks[parseInt(taskIdx)];
+        const member = teamData.find(m => m.id === memberId);
+        if (member) {
+          const effectiveHours = Math.ceil(task.estimated_hours / member.speed_factor);
+          totalCost += effectiveHours * member.hourly_rate;
+        }
+      }
+    });
     
-    return {
-      totalHours,
-      weeksNeeded,
-      daysNeeded,
-      hoursPerDay,
-      hoursPerWeek
-    };
+    return totalCost;
   };
 
   // 拉取团队成员数据
@@ -934,6 +990,55 @@ export default function TaskPlanner() {
                     ? `* 基于每天${completionInfo.hoursPerDay}小时，每周${completionInfo.hoursPerWeek}小时的工作量计算`
                     : `* Based on ${completionInfo.hoursPerDay}h/day, ${completionInfo.hoursPerWeek}h/week workload`
                   }
+                  <br />
+                  {lang === 'zh' 
+                    ? (assignMode === 'fast' || assignMode === 'balanced') 
+                      ? '（并行开发模式：基于工作量最大的成员计算）'
+                      : '（串行开发模式：基于总工时计算）'
+                    : (assignMode === 'fast' || assignMode === 'balanced')
+                      ? ' (Parallel development: based on member with highest workload)'
+                      : ' (Sequential development: based on total hours)'
+                  }
+                </div>
+              </div>
+            );
+          })()}
+          
+          {/* 总费用显示 */}
+          {tasks.length > 0 && (() => {
+            const totalCost = calculateTotalCost();
+            
+            return (
+              <div style={{
+                marginTop: 16,
+                padding: 16,
+                background: '#f8fafc',
+                borderRadius: 12,
+                border: '1px solid #e2e8f0',
+                textAlign: 'center'
+              }}>
+                <div style={{
+                  fontSize: 18,
+                  fontWeight: 600,
+                  color: '#1e293b',
+                  marginBottom: 8
+                }}>
+                  {lang === 'zh' ? '💰 总费用' : '💰 Total Cost'}
+                </div>
+                <div style={{
+                  background: '#fff',
+                  padding: '16px 24px',
+                  borderRadius: 8,
+                  border: '1px solid #e2e8f0',
+                  display: 'inline-block',
+                  minWidth: 200
+                }}>
+                  <div style={{ fontSize: 14, color: '#64748b', marginBottom: 4 }}>
+                    {lang === 'zh' ? '项目总费用' : 'Project Total Cost'}
+                  </div>
+                  <div style={{ fontSize: 24, fontWeight: 700, color: '#1e293b' }}>
+                    ¥{totalCost.toLocaleString()}
+                  </div>
                 </div>
               </div>
             );
