@@ -529,13 +529,45 @@ export default function TaskPlanner() {
         const task = tasks[parseInt(taskIdx)];
         const member = teamData.find(m => m.id === memberId);
         if (member) {
-          const effectiveHours = Math.ceil(task.estimated_hours / member.speed_factor);
-          totalCost += effectiveHours * member.hourly_rate;
+          // 使用原始工时计算成本，不考虑速度倍率
+          const originalHours = task.estimated_hours;
+          totalCost += originalHours * member.hourly_rate;
         }
       }
     });
     
     return totalCost;
+  };
+
+  // 处理成员点击弹窗的通用函数
+  const handleMemberClick = (e: React.MouseEvent, member: any, taskIndex: number) => {
+    // 使用鼠标位置来定位弹窗
+    const mouseX = e.clientX;
+    const mouseY = e.clientY;
+    const popupWidth = 240;
+    const popupHeight = 180;
+    
+    // 计算弹窗位置，优先显示在鼠标右侧
+    let x = mouseX + 10;
+    let y = mouseY - 20;
+    
+    // 如果右侧空间不够，显示在左侧
+    if (x + popupWidth > window.innerWidth) {
+      x = mouseX - popupWidth - 10;
+    }
+    
+    // 如果下边空间不够，显示在上边
+    if (y + popupHeight > window.innerHeight) {
+      y = mouseY - popupHeight + 20;
+    }
+    
+    // 确保不超出边界
+    x = Math.max(10, Math.min(x, window.innerWidth - popupWidth - 10));
+    y = Math.max(10, Math.min(y, window.innerHeight - popupHeight - 10));
+    
+    setSelectedMember(member);
+    setPopupPos({ x, y });
+    setPopupTaskIdx(taskIndex);
   };
 
   // 拉取团队成员数据
@@ -774,13 +806,7 @@ export default function TaskPlanner() {
                           <span
                             key={member.id}
                             className={`member-badge${isSelected ? ' selected-member' : ''}`}
-                            onClick={e => {
-                              const rect = (e.target as HTMLElement).getBoundingClientRect();
-                              setSelectedMember(member);
-                              setPopupPos({ x: rect.right + window.scrollX + 8, y: rect.top + window.scrollY });
-                              setPopupTaskIdx(i);
-                              setSelectedMembers(prev => ({ ...prev, [i]: member.id }));
-                            }}
+                            onClick={e => handleMemberClick(e, member, i)}
                             style={{ cursor: 'pointer', userSelect: 'none' }}
                             title={canAssign ? t.detail : t.detailInsufficient}
                           >
@@ -809,13 +835,7 @@ export default function TaskPlanner() {
                           <span
                             key={member.id}
                             className={`member-badge${isSelected ? ' selected-member' : ''}`}
-                            onClick={e => {
-                              const rect = (e.target as HTMLElement).getBoundingClientRect();
-                              setSelectedMember(member);
-                              setPopupPos({ x: rect.right + window.scrollX + 8, y: rect.top + window.scrollY });
-                              setPopupTaskIdx(i);
-                              setSelectedMembers(prev => ({ ...prev, [i]: member.id }));
-                            }}
+                            onClick={e => handleMemberClick(e, member, i)}
                             style={{ cursor: 'pointer', userSelect: 'none' }}
                             title={t.select}
                           >
@@ -833,13 +853,7 @@ export default function TaskPlanner() {
                           <span
                             key={member.id}
                             className={`member-badge${isSelected ? ' selected-member' : ''}`}
-                            onClick={e => {
-                              const rect = (e.target as HTMLElement).getBoundingClientRect();
-                              setSelectedMember(member);
-                              setPopupPos({ x: rect.right + window.scrollX + 8, y: rect.top + window.scrollY });
-                              setPopupTaskIdx(i);
-                              setSelectedMembers(prev => ({ ...prev, [i]: member.id }));
-                            }}
+                            onClick={e => handleMemberClick(e, member, i)}
                             style={{ cursor: 'pointer', userSelect: 'none' }}
                             title={t.select}
                           >
@@ -857,14 +871,7 @@ export default function TaskPlanner() {
                           <span
                             key={member.id}
                             className={`member-badge${isSelected ? ' selected-member' : ''}`}
-                            onClick={e => {
-                              const rect = (e.target as HTMLElement).getBoundingClientRect();
-                              setSelectedMember(member);
-                              setPopupPos({ x: rect.right + window.scrollX + 8, y: rect.top + window.scrollY });
-                              setPopupPos({ x: rect.right + window.scrollX + 8, y: rect.top + window.scrollY });
-                              setPopupTaskIdx(i);
-                              setSelectedMembers(prev => ({ ...prev, [i]: member.id }));
-                            }}
+                            onClick={e => handleMemberClick(e, member, i)}
                             style={{ cursor: 'pointer', userSelect: 'none' }}
                             title={t.select}
                           >
@@ -1359,15 +1366,130 @@ export default function TaskPlanner() {
 
           {/* 成员详情弹窗 */}
           {selectedMember && popupPos && (
-            <div style={{
-              position: 'fixed', left: popupPos.x, top: popupPos.y, zIndex: 5000,
-              background: '#fff', borderRadius: 8, boxShadow: '0 4px 16px rgba(0,0,0,0.15)', padding: 16, minWidth: 200
-            }}>
-              <div style={{fontWeight:600, marginBottom:8}}>{selectedMember.name}</div>
-              <div style={{fontSize:14, color:'#666', marginBottom:4}}>{lang === 'zh' ? '角色：' : 'Role: '}{selectedMember.roles.join(', ')}</div>
-              <div style={{fontSize:14, color:'#666', marginBottom:4}}>{lang === 'zh' ? '时薪：' : 'Hourly Rate: '}{selectedMember.hourly_rate} {lang === 'zh' ? '元' : 'CNY'}</div>
-              <div style={{fontSize:14, color:'#666', marginBottom:4}}>{lang === 'zh' ? '速度倍率：' : 'Speed Factor: '}{selectedMember.speed_factor}</div>
-              <div style={{fontSize:14, color:'#666'}}>{lang === 'zh' ? '经验分数：' : 'Experience: '}{selectedMember.experience_score}</div>
+            <div 
+              style={{
+                position: 'fixed',
+                left: popupPos.x,
+                top: popupPos.y,
+                zIndex: 5000,
+                background: '#fff',
+                borderRadius: 8,
+                boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+                border: '1px solid #e2e8f0',
+                padding: 16,
+                minWidth: 240,
+                maxWidth: 280
+              }}
+            >
+              {/* 成员名称 */}
+              <div style={{
+                fontWeight: 600,
+                fontSize: 16,
+                marginBottom: 12,
+                color: '#1e293b'
+              }}>
+                {lang === 'zh' ? selectedMember.name : (selectedMember.name_en || selectedMember.name)}
+              </div>
+              
+              {/* 成员信息 */}
+              <div style={{ fontSize: 14, color: '#64748b', lineHeight: 1.5 }}>
+                <div style={{ marginBottom: 6 }}>
+                  <span style={{ fontWeight: 500 }}>{lang === 'zh' ? '角色：' : 'Role: '}</span>
+                  {lang === 'zh' 
+                    ? selectedMember.roles.join(', ')
+                    : selectedMember.roles.map((role: string) => {
+                        // 角色名称的英文映射
+                        const roleMap: { [key: string]: string } = {
+                          '前端工程师': 'Frontend Engineer',
+                          '后端工程师': 'Backend Engineer',
+                          'UI设计师': 'UI Designer',
+                          'UX设计师': 'UX Designer',
+                          '测试工程师': 'Test Engineer',
+                          '数据库工程师': 'Database Engineer',
+                          '产品经理': 'Product Manager',
+                          'DevOps工程师': 'DevOps Engineer',
+                          '全栈工程师': 'Full Stack Engineer',
+                          '杂项专员': 'Generalist'
+                        };
+                        return roleMap[role] || role;
+                      }).join(', ')
+                  }
+                </div>
+                <div style={{ marginBottom: 6 }}>
+                  <span style={{ fontWeight: 500 }}>{lang === 'zh' ? '时薪：' : 'Rate: '}</span>
+                  {selectedMember.hourly_rate} {lang === 'zh' ? '元' : 'CNY'}
+                </div>
+                <div style={{ marginBottom: 6 }}>
+                  <span style={{ fontWeight: 500 }}>{lang === 'zh' ? '速度：' : 'Speed: '}</span>
+                  {selectedMember.speed_factor}
+                </div>
+                <div style={{ marginBottom: 6 }}>
+                  <span style={{ fontWeight: 500 }}>{lang === 'zh' ? '经验：' : 'Exp: '}</span>
+                  {selectedMember.experience_score}
+                </div>
+                <div style={{ marginBottom: 12 }}>
+                  <span style={{ fontWeight: 500 }}>{lang === 'zh' ? '可用：' : 'Available: '}</span>
+                  {selectedMember.available_hours.join(', ')} {lang === 'zh' ? '小时' : 'h'}
+                </div>
+              </div>
+              
+              {/* 选择按钮 */}
+              <button
+                style={{
+                  background: '#1890ff',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 6,
+                  padding: '8px 16px',
+                  fontSize: 14,
+                  cursor: 'pointer',
+                  width: '100%',
+                  fontWeight: 600,
+                  transition: 'background-color 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = '#40a9ff'}
+                onMouseLeave={(e) => e.currentTarget.style.background = '#1890ff'}
+                onClick={() => {
+                  if (popupTaskIdx !== null) {
+                    setSelectedMembers(prev => ({ ...prev, [popupTaskIdx]: selectedMember.id }));
+                  }
+                  setSelectedMember(null);
+                  setPopupPos(null);
+                  setPopupTaskIdx(null);
+                }}
+              >
+                {lang === 'zh' ? '选择该成员' : 'Select Member'}
+              </button>
+              
+              {/* 关闭按钮 */}
+              <button
+                style={{
+                  position: 'absolute',
+                  top: 8,
+                  right: 8,
+                  background: 'none',
+                  border: 'none',
+                  fontSize: 18,
+                  color: '#94a3b8',
+                  cursor: 'pointer',
+                  width: 24,
+                  height: 24,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: '50%',
+                  transition: 'background-color 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                onClick={() => {
+                  setSelectedMember(null);
+                  setPopupPos(null);
+                  setPopupTaskIdx(null);
+                }}
+              >
+                ×
+              </button>
             </div>
           )}
 

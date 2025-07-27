@@ -6,6 +6,7 @@ export type SmartMatchResult = {
   nextAvailableWeek: number; // 最早可分配的周索引（0~3），-1表示无可用
   totalAvailable: number; // 四周总可用工时
   effectiveHours: number; // 实际完成本任务所需工时（考虑速度倍率）
+  originalHours: number; // 原始工时（AI拆解时的工时）
 };
 
 /**
@@ -45,7 +46,8 @@ export function globalFastestAssignment(
         canAssign: totalAvailable >= effectiveHours,
         nextAvailableWeek: totalAvailable >= effectiveHours ? 0 : -1,
         totalAvailable,
-        effectiveHours
+        effectiveHours,
+        originalHours: task.estimated_hours
       };
     });
     if (task.splittable !== false) {
@@ -209,7 +211,8 @@ export function smartMatchDevelopersForTask(
       canAssign: totalAvailable >= effectiveHours,
       nextAvailableWeek: totalAvailable >= effectiveHours ? 0 : -1,
       totalAvailable,
-      effectiveHours
+      effectiveHours,
+      originalHours: task.estimated_hours
     };
   });
   // 按模式排序
