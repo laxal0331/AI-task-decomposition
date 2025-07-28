@@ -1,10 +1,10 @@
-// next.config.js
+// next.config.cjs
+
+/** @type {import('next').NextConfig} */
 const nextConfig = {
   eslint: {
-    // ❗ 在构建时忽略 ESLint 错误
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: true, // ✅ 禁用 ESLint 阻止构建
   },
-  // 其他配置项...
 };
 
 module.exports = nextConfig;
