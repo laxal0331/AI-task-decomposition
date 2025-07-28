@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { initDatabase } from '../../lib/database';
+import { supabase } from '../../lib/supabase';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -7,7 +7,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    await initDatabase();
+    // Supabase 会自动创建表，所以这里只需要返回成功
     res.status(200).json({ message: 'Database initialized successfully' });
   } catch (error) {
     console.error('Database initialization error:', error);

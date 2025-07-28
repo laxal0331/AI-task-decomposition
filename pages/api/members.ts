@@ -1,41 +1,33 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import db from '../../lib/database';
-
-interface TeamMember {
-  id: string;
-  name: string;
-  name_en: string;
-  roles: string;
-  hourly_rate: number;
-  speed_factor: number;
-  available_hours: string;
-  skills: string;
-  experience_score: number;
-}
+import { supabase } from '../../lib/supabase';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'GET') {
     try {
       console.log('开始获取成员数据...');
       
-      // 测试数据库连接
-      console.log('测试数据库连接...');
-      const [testResult] = await db.execute('SELECT 1 as test');
-      console.log('数据库连接测试成功:', testResult);
+      // 查询所有成员
+      const { data: rows, error } = await supabase
+        .from('team_members')
+        .select('*')
+        .order('id', { ascending: true });
       
-      // 直接查询数据库
-      const [rows] = await db.execute('SELECT * FROM team_members ORDER BY id ASC');
+      if (error) {
+        console.error('数据库查询错误:', error);
+        return res.status(500).json({ error: '获取成员失败', details: error.message });
+      }
+      
       console.log('数据库查询结果:', rows);
-      console.log('获取到成员数量:', (rows as TeamMember[])?.length || 0);
+      console.log('获取到成员数量:', rows?.length || 0);
       
-      if (!rows || (rows as TeamMember[]).length === 0) {
+      if (!rows || rows.length === 0) {
         console.log('数据库中没有找到开发者数据');
         res.status(200).json({ members: [] });
         return;
       }
       
       // 处理数据格式
-      const members = (rows as TeamMember[]).map((row, index) => {
+      const members = rows.map((row, index) => {
         try {
           let availableHours = [];
           try {
@@ -91,16 +83,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         availableHoursArray = [40, 35, 30, 25]; // 默认值
       }
       
-      const [result] = await db.execute(`
-        INSERT INTO team_members (id, name, name_en, roles, hourly_rate, speed_factor, available_hours, skills, experience_score)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `, [id, name, name_en, JSON.stringify([role]), hourly_rate, speed_factor, JSON.stringify(availableHoursArray), JSON.stringify(skills), 70]);
+      const { error } = await supabase
+        .from('team_members')
+        .insert({
+          id,
+          name,
+          name_en,
+          roles: JSON.stringify([role]),
+          hourly_rate,
+          speed_factor,
+          available_hours: JSON.stringify(availableHoursArray),
+          skills: JSON.stringify(skills),
+          experience_score: 70
+        });
 
-      if ((result as { affectedRows: number }).affectedRows > 0) {
-        res.status(201).json({ success: true, message: 'Developer created successfully', id });
-      } else {
-        res.status(500).json({ error: 'Failed to create developer' });
+      if (error) {
+        console.error('Create developer error:', error);
+        return res.status(500).json({ error: 'Failed to create developer', details: error.message });
       }
+      
+      res.status(201).json({ success: true, message: 'Developer created successfully', id });
     } catch (error) {
       console.error('Create developer error:', error);
       res.status(500).json({ error: 'Failed to create developer', details: String(error) });

@@ -1,6 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { taskService, teamMemberService, orderService } from '../../lib/dbService';
-import database from '../../lib/database';
 
 // 定义类型
 interface TeamMember {
@@ -95,9 +94,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           candidate.availableHours[candidate.idx] -= task.estimated_hours;
           const newAvailableHours = setAvailableHours(candidate.member, candidate.availableHours);
           // 更新成员 available_hours
-          const connection = await database.getConnection();
-          await connection.query('UPDATE team_members SET available_hours = ? WHERE id = ?', [newAvailableHours, candidate.member.id]);
-          connection.release();
+          await teamMemberService.updateMemberHours(candidate.member.id, newAvailableHours);
           autoAssignments.push({ taskId: task.id, memberId: candidate.member.id });
         } else {
           autoAssignments.push({ taskId: task.id, memberId: null }); // 无合适成员

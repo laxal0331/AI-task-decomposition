@@ -1,24 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { orderService, taskService, teamMemberService } from '../../lib/dbService';
 
-interface Task {
-  id: string;
-  assigned_member_id: string | null;
-  [key: string]: unknown;
-}
-
-interface Order {
-  id: string;
-  task_count?: number;
-  [key: string]: unknown;
-}
-
-interface TeamMember {
-  id: string;
-  name: string;
-  [key: string]: unknown;
-}
-
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'GET') {
     try {
@@ -34,13 +16,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // 获取订单的任务
         const tasks = await taskService.getTasksByOrderId(orderId as string);
         // 直接使用tasks表中的assigned_member_id字段
-        const tasksWithMember = (tasks as Task[]).map((task: Task) => ({
+        const tasksWithMember = tasks.map((task: any) => ({
           ...task,
           assigned_member_id: task.assigned_member_id || null
         }));
 
         // 获取所有成员的最新数据
-        const allMembers = await teamMemberService.getAll() as TeamMember[];
+        const allMembers = await teamMemberService.getAll();
         
         res.status(200).json({
           order: {
@@ -53,8 +35,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
       } else {
         // 获取所有订单
-        const orders = await orderService.getAllOrders() as Order[];
-        res.status(200).json({ orders: orders.map((o: Order) => ({ ...o, task_count: o.task_count || 0 })) });
+        const orders = await orderService.getAllOrders();
+        res.status(200).json({ orders: orders.map((o: any) => ({ ...o, task_count: o.task_count || 0 })) });
       }
     } catch (error) {
       console.error('Get orders error:', error);

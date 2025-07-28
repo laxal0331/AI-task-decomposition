@@ -1,9 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import db from '../../../lib/database';
-
-interface DbResult {
-  affectedRows: number;
-}
+import { supabase } from '../../../lib/supabase';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { id } = req.query;
@@ -13,17 +9,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
       const { name, name_en, role, hourly_rate, speed_factor, available_hours, skills } = req.body;
       
-      const [result] = await db.execute(`
-        UPDATE team_members 
-        SET name = ?, name_en = ?, roles = ?, hourly_rate = ?, speed_factor = ?, available_hours = ?, skills = ?, experience_score = ?
-        WHERE id = ?
-      `, [name, name_en, JSON.stringify([role]), hourly_rate, speed_factor, available_hours, JSON.stringify(skills), 70, id]);
+      const { error } = await supabase
+        .from('team_members')
+        .update({
+          name,
+          name_en,
+          roles: JSON.stringify([role]),
+          hourly_rate,
+          speed_factor,
+          available_hours,
+          skills: JSON.stringify(skills),
+          experience_score: 70
+        })
+        .eq('id', id);
 
-      if ((result as DbResult).affectedRows > 0) {
-        res.status(200).json({ success: true, message: 'Developer updated successfully' });
-      } else {
-        res.status(404).json({ error: 'Developer not found' });
+      if (error) {
+        console.error('Update developer error:', error);
+        return res.status(500).json({ error: 'Failed to update developer', details: error.message });
       }
+      
+      res.status(200).json({ success: true, message: 'Developer updated successfully' });
     } catch (error) {
       console.error('Update developer error:', error);
       res.status(500).json({ error: 'Failed to update developer' });
@@ -31,13 +36,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   } else if (req.method === 'DELETE') {
     // 删除开发者
     try {
-      const [result] = await db.execute('DELETE FROM team_members WHERE id = ?', [id]);
+      const { error } = await supabase
+        .from('team_members')
+        .delete()
+        .eq('id', id);
       
-      if ((result as DbResult).affectedRows > 0) {
-        res.status(200).json({ success: true, message: 'Developer deleted successfully' });
-      } else {
-        res.status(404).json({ error: 'Developer not found' });
+      if (error) {
+        console.error('Delete developer error:', error);
+        return res.status(500).json({ error: 'Failed to delete developer', details: error.message });
       }
+      
+      res.status(200).json({ success: true, message: 'Developer deleted successfully' });
     } catch (error) {
       console.error('Delete developer error:', error);
       res.status(500).json({ error: 'Failed to delete developer' });
