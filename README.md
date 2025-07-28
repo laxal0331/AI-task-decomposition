@@ -38,18 +38,12 @@ AI Remote Project Management Platform
 
 ## 数据库默认数据 Default Database Data
 
-- 本项目自带一份默认数据库数据（`data/seed.sql`），用于测试和演示。
-- 你可以通过如下命令导入默认数据（需先启动本地 MySQL 并创建数据库）：
-  ```bash
-  mysql -u root -p ai_remote_pm < data/seed.sql
-  ```
+- 本项目使用 Supabase 作为数据库服务，无需本地数据库配置。
+- 默认数据会自动在 Supabase 中创建，无需手动导入。
 - 这些数据仅供测试体验，可随时删除或替换为自己的数据。
 
-- The project includes default database data (`data/seed.sql`) for testing and demo purposes.
-- You can import the default data with the following command (make sure MySQL is running and the database is created):
-  ```bash
-  mysql -u root -p ai_remote_pm < data/seed.sql
-  ```
+- The project uses Supabase as the database service, no local database setup required.
+- Default data will be automatically created in Supabase, no manual import needed.
 - These data are for testing only and can be deleted or replaced at any time.
 
 ---
@@ -71,10 +65,10 @@ AI Remote Project Management Platform
 
 ## 数据库与未来计划 Database & Planned Features
 
-- 当前数据库集成正在重构，未来将支持更灵活的数据存储和迁移。
-- 详情见 “Work in Progress” 或 “Planned Features” 部分。
-- The database integration is being refactored for more flexible storage and migration.
-- See the “Work in Progress” or “Planned Features” section for details.
+- 当前使用 Supabase 作为数据库服务，提供云端的 PostgreSQL 数据库。
+- 支持实时数据同步、用户认证、文件存储等功能。
+- The project uses Supabase as the database service, providing cloud PostgreSQL database.
+- Supports real-time data sync, user authentication, file storage, etc.
 
 ---
 
@@ -84,9 +78,10 @@ AI Remote Project Management Platform
 
 Please copy `.env.example` to `.env.local` in the project root, and fill in your own database credentials, API keys, etc.
 
-**支持的 AI Key：**
-- `DEEPSEEK_API_KEY`（优先使用）
-- `OPENAI_API_KEY`（如未配置 DeepSeek，则自动使用 OpenAI）
+**必需的环境变量：**
+- `SUPABASE_URL` - Supabase 项目 URL
+- `SUPABASE_ANON_KEY` - Supabase 匿名密钥
+- `DEEPSEEK_API_KEY`（优先使用）或 `OPENAI_API_KEY`
 
 > 系统会自动优先使用 DeepSeek，有哪个用哪个。
 > The system will automatically use DeepSeek first, and fallback to OpenAI if DeepSeek is not configured.
@@ -105,9 +100,10 @@ The `.env.local` file is ignored by git and will not be uploaded to the reposito
 ```bash
 npm install
 npm run dev
-# 如需初始化数据库，可运行 / To initialize the database:
-mysql -u root -p ai_remote_pm < data/seed.sql
 ```
+
+访问 http://localhost:3000 开始使用
+Visit http://localhost:3000 to start using
 
 ---
 
@@ -117,7 +113,7 @@ mysql -u root -p ai_remote_pm < data/seed.sql
 - Node.js API 路由 / Node.js API routes
 - OpenAI API 集成 / OpenAI API integration
 - CSS/响应式设计 / CSS/Responsive design
-- MySQL 数据库 / MySQL database
+- Supabase 数据库 / Supabase database
 
 ---
 

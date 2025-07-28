@@ -7,14 +7,11 @@
 
 ```bash
 # DeepSeek API 配置
-DEEPSEEK_API_KEY=sk-8014635c61974c0ab3ac1483c686663c
+DEEPSEEK_API_KEY=your_deepseek_api_key_here
 
-# MySQL 数据库配置
-DB_HOST=localhost
-DB_USER=root
-DB_PASSWORD=your_mysql_password
-DB_NAME=ai_remote_pm
-DB_PORT=3306
+# Supabase 数据库配置
+SUPABASE_URL=your_supabase_project_url
+SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
 ## 获取 DeepSeek API 密钥
@@ -24,53 +21,30 @@ DB_PORT=3306
 3. 在控制台中获取 API 密钥
 4. 将密钥替换到 `.env.local` 文件中的 `your_deepseek_api_key_here`
 
-## MySQL 数据库设置
+## Supabase 数据库设置
 
-### 1. 安装 MySQL
+### 1. 创建 Supabase 项目
 
-**Windows:**
-- 下载并安装 [MySQL Community Server](https://dev.mysql.com/downloads/mysql/)
-- 安装时设置 root 密码
+1. 访问 [Supabase 官网](https://supabase.com/)
+2. 注册并登录账户
+3. 创建新项目
+4. 在项目设置中获取以下信息：
+   - Project URL
+   - Anon (public) key
 
-**macOS:**
-```bash
-brew install mysql
-brew services start mysql
-```
+### 2. 配置环境变量
 
-**Linux (Ubuntu/Debian):**
-```bash
-sudo apt update
-sudo apt install mysql-server
-sudo mysql_secure_installation
-```
+确保 `.env.local` 文件中的 Supabase 配置正确：
+- `SUPABASE_URL`: Supabase 项目 URL
+- `SUPABASE_ANON_KEY`: Supabase 匿名密钥
 
-### 2. 创建数据库
+### 3. 数据库表结构
 
-1. 启动 MySQL 服务
-2. 登录 MySQL：
-```bash
-mysql -u root -p
-```
-
-3. 创建数据库（可选，应用会自动创建）：
-```sql
-CREATE DATABASE IF NOT EXISTS ai_remote_pm;
-```
-
-4. 退出 MySQL：
-```sql
-EXIT;
-```
-
-### 3. 配置环境变量
-
-确保 `.env.local` 文件中的数据库配置正确：
-- `DB_HOST`: MySQL 服务器地址（通常是 localhost）
-- `DB_USER`: MySQL 用户名（通常是 root）
-- `DB_PASSWORD`: MySQL 密码
-- `DB_NAME`: 数据库名称（ai_remote_pm）
-- `DB_PORT`: MySQL 端口（通常是 3306）
+项目会自动在 Supabase 中创建所需的表：
+- `orders` - 订单表
+- `tasks` - 任务表
+- `team_members` - 团队成员表
+- `chat_messages` - 聊天消息表
 
 ## 启动项目
 
@@ -85,23 +59,15 @@ npm run dev
 
 ### 数据库连接错误
 
-如果遇到 "Unknown database 'ai_remote_pm'" 错误：
+如果遇到 Supabase 连接错误：
 
-1. 确保 MySQL 服务正在运行
-2. 检查 `.env.local` 文件中的数据库配置
-3. 确保 MySQL 用户有创建数据库的权限
-4. 应用会自动创建数据库和表，如果仍有问题，可以手动创建：
+1. 确保 `.env.local` 文件中的 Supabase 配置正确
+2. 检查 Supabase 项目是否正常运行
+3. 确认 API 密钥权限是否正确
 
-```sql
-CREATE DATABASE ai_remote_pm;
-USE ai_remote_pm;
-```
+### 环境变量问题
 
-### 权限问题
-
-如果遇到权限错误，确保 MySQL 用户有足够权限：
-
-```sql
-GRANT ALL PRIVILEGES ON ai_remote_pm.* TO 'root'@'localhost';
-FLUSH PRIVILEGES;
-``` 
+确保所有必需的环境变量都已正确设置：
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+- `DEEPSEEK_API_KEY` 
