@@ -26,12 +26,13 @@ interface Task {
 interface TeamMember {
   id: string;
   name: string;
+  name_zh: string;
   name_en: string;
-  roles: string;
+  roles: string[];
   hourly_rate: number;
   speed_factor: number;
-  available_hours: string;
-  skills: string;
+  available_hours: number[];
+  skills: string[];
   experience_score: number;
   [key: string]: unknown;
 }
@@ -330,18 +331,24 @@ export const teamMemberService = {
   async bulkInsert(members: TeamMember[]) {
     const connection = await pool.getConnection();
     try {
-      const values = members.map(m => [
-        m.id,
-        m.name,
-        m.name_zh || m.name,
-        m.name_en || m.name,
-        JSON.stringify(m.roles),
-        JSON.stringify(m.skills),
-        JSON.stringify(m.available_hours),
-        m.experience_score,
-        m.hourly_rate,
-        m.speed_factor
-      ]);
+      const values = members.map(m => {
+        const roles = Array.isArray(m.roles) ? m.roles : [m.roles];
+        const skills = Array.isArray(m.skills) ? m.skills : [m.skills];
+        const availableHours = Array.isArray(m.available_hours) ? m.available_hours : [m.available_hours];
+        
+        return [
+          m.id,
+          m.name,
+          m.name_zh || m.name,
+          m.name_en || m.name,
+          JSON.stringify(roles),
+          JSON.stringify(skills),
+          JSON.stringify(availableHours),
+          m.experience_score,
+          m.hourly_rate,
+          m.speed_factor
+        ];
+      });
       await connection.query(
         'INSERT IGNORE INTO team_members (id, name, name_zh, name_en, roles, skills, available_hours, experience_score, hourly_rate, speed_factor) VALUES ?',[values]
       );

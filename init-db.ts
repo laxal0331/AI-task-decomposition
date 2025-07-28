@@ -21,7 +21,14 @@ async function init() {
           for (let i = 0; i < allMembers.length; i += batchSize) {
             const batch = allMembers.slice(i, i + batchSize);
             try {
-              await teamMemberService.bulkInsert(batch);
+              // 类型转换以确保兼容性
+              const convertedBatch = batch.map(member => ({
+                ...member,
+                roles: Array.isArray(member.roles) ? member.roles : [member.roles],
+                skills: Array.isArray(member.skills) ? member.skills : [member.skills],
+                available_hours: Array.isArray(member.available_hours) ? member.available_hours : [member.available_hours]
+              }));
+              await teamMemberService.bulkInsert(convertedBatch);
               console.log(`已写入 ${Math.min(i + batch.length, allMembers.length)}/${allMembers.length}`);
             } catch (e) {
               console.error('写入成员批次出错:', e);

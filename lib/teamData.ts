@@ -1,8 +1,8 @@
 export type TeamMember = {
   id: string;
   name: string;
-  name_zh?: string;
-  name_en?: string;
+  name_zh: string;
+  name_en: string;
   roles: string[];
   skills: string[];
   available_hours: number[]; // 未来四周每周可用工时
