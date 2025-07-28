@@ -1,20 +1,46 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { taskService, teamMemberService, orderService } from '../../lib/dbService';
+import database from '../../lib/database';
+
+// 定义类型
+interface TeamMember {
+  id: string;
+  available_hours: string | number[];
+  roles: string | string[];
+}
+
+interface Task {
+  id: string;
+  assigned_member_id: string | null;
+  role_zh: string;
+  estimated_hours: number;
+}
+
+interface Assignment {
+  taskId: string;
+  memberId: string | null;
+}
+
+interface Candidate {
+  member: TeamMember;
+  idx: number;
+  availableHours: number[];
+}
 
 // 工具函数：解析成员的 available_hours 字段（JSON字符串）
-function getAvailableHours(member: any): number[] {
+function getAvailableHours(member: TeamMember): number[] {
   try {
     if (typeof member.available_hours === 'string') {
       return JSON.parse(member.available_hours);
     }
-    return member.available_hours;
+    return member.available_hours as number[];
   } catch {
     return [];
   }
 }
 
 // 工具函数：更新成员的 available_hours 字段
-function setAvailableHours(member: any, newAvailableHours: number[]): string {
+function setAvailableHours(member: TeamMember, newAvailableHours: number[]): string {
   return JSON.stringify(newAvailableHours);
 }
 
@@ -34,16 +60,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(200).json({ message: '分配完成', assignments });
       }
       // 获取所有未分配的任务
-      const allTasks: any[] = await taskService.getTasksByOrderId(orderId) as any[];
-      const unassignedTasks = allTasks.filter((task: any) => !task.assigned_member_id);
+      const allTasks: Task[] = await taskService.getTasksByOrderId(orderId) as Task[];
+      const unassignedTasks = allTasks.filter((task: Task) => !task.assigned_member_id);
 
       // 获取所有成员
-      const allMembers: any[] = await teamMemberService.getAll() as any[];
-      let autoAssignments: { taskId: string, memberId: string | null }[] = [];
+      const allMembers: TeamMember[] = await teamMemberService.getAll() as TeamMember[];
+      const autoAssignments: Assignment[] = [];
 
       for (const task of unassignedTasks) {
         // 查找满足角色且有足够可用工时的成员
-        let candidate: { member: any, idx: number, availableHours: number[] } | null = null;
+        let candidate: Candidate | null = null;
         for (const member of allMembers) {
           // 角色匹配
           let roles: string[] = [];
@@ -53,7 +79,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           if (!roles || !roles.includes(task.role_zh)) continue;
 
           // 工时匹配
-          let availableHours: number[] = getAvailableHours(member);
+          const availableHours: number[] = getAvailableHours(member);
           // 这里假设 available_hours 是数组，每个元素代表某天的可用工时，取第一个大于等于任务工时的天
           const idx = availableHours.findIndex((h: number) => h >= task.estimated_hours);
           if (idx === -1) continue;
@@ -69,7 +95,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           candidate.availableHours[candidate.idx] -= task.estimated_hours;
           const newAvailableHours = setAvailableHours(candidate.member, candidate.availableHours);
           // 更新成员 available_hours
-          const connection = await require('../../lib/database').default.getConnection();
+          const connection = await database.getConnection();
           await connection.query('UPDATE team_members SET available_hours = ? WHERE id = ?', [newAvailableHours, candidate.member.id]);
           connection.release();
           autoAssignments.push({ taskId: task.id, memberId: candidate.member.id });

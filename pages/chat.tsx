@@ -33,12 +33,30 @@ export default function Chat() {
   const { orderId, taskId, role: urlRole } = router.query;
   const [lang, setLang] = useState<'zh' | 'en'>('zh');
   const t = texts[lang];
-  const chatKey = `chat_${orderId}_${taskId}`;
   const roleKey = `chat_role_${orderId}_${taskId}`;
   const [messages, setMessages] = useState<{text:string; time:number; role:string;}[]>([]);
   const [input, setInput] = useState('');
   const [role, setRole] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  // 获取聊天消息
+  const fetchMessages = async () => {
+    try {
+      const res = await fetch(`/api/chat?orderId=${orderId}&taskId=${taskId}`);
+      const data = await res.json();
+      
+      if (data.messages) {
+        const formattedMessages = data.messages.map((msg: any) => ({
+          text: msg.message,
+          time: new Date(msg.created_at).getTime(),
+          role: msg.role
+        }));
+        setMessages(formattedMessages);
+      }
+    } catch (error) {
+      console.error('Fetch messages error:', error);
+    }
+  };
 
   // 自动识别URL中的role参数，或用localStorage记住身份
   useEffect(() => {
@@ -60,7 +78,7 @@ export default function Chat() {
     if (orderId && taskId) {
       fetchMessages();
     }
-  }, [orderId, taskId]);
+  }, [orderId, taskId, fetchMessages]);
 
   // 定时刷新消息
   useEffect(() => {
@@ -71,26 +89,7 @@ export default function Chat() {
     }, 3000); // 每3秒刷新一次
     
     return () => clearInterval(interval);
-  }, [orderId, taskId]);
-
-  // 获取聊天消息
-  const fetchMessages = async () => {
-    try {
-      const res = await fetch(`/api/chat?orderId=${orderId}&taskId=${taskId}`);
-      const data = await res.json();
-      
-      if (data.messages) {
-        const formattedMessages = data.messages.map((msg: any) => ({
-          text: msg.message,
-          time: new Date(msg.created_at).getTime(),
-          role: msg.role
-        }));
-        setMessages(formattedMessages);
-      }
-    } catch (error) {
-      console.error('Fetch messages error:', error);
-    }
-  };
+  }, [orderId, taskId, fetchMessages]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({behavior:'smooth'});

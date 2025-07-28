@@ -1,4 +1,3 @@
-import Image from "next/image";
 import { Geist, Geist_Mono } from "next/font/google";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from 'next/router';
@@ -142,7 +141,7 @@ export default function Home() {
     window.addEventListener('scroll', handleScroll);
     handleScroll();
     return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  }, [introRefs]);
 
   // 动画严格串行：先滑动logo，滑动2秒后再翻转
   useEffect(() => {

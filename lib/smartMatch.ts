@@ -36,7 +36,7 @@ export function globalFastestAssignment(
   for (const task of taskOrder) {
     // 过滤有该角色的成员
     const candidates = allMembers.filter(m => m.roles.includes(task.role));
-    let match: SmartMatchResult[] = candidates.map(member => {
+    const match: SmartMatchResult[] = candidates.map(member => {
       const used = assigned[member.id] || [0,0,0,0];
       const remain = member.available_hours.map((h, i) => h - (used[i] || 0));
       const effectiveHours = Math.ceil(task.estimated_hours / member.speed_factor);
@@ -52,7 +52,7 @@ export function globalFastestAssignment(
     });
     if (task.splittable !== false) {
       let remainHours = task.estimated_hours;
-      let assignments: SmartMatchResult[] = [];
+      const assignments: SmartMatchResult[] = [];
       let sorted: SmartMatchResult[] = [];
       if (assignMode === 'fast') {
         sorted = match
@@ -66,10 +66,10 @@ export function globalFastestAssignment(
             if (b.member.speed_factor !== a.member.speed_factor) return b.member.speed_factor - a.member.speed_factor;
             return a.member.hourly_rate - b.member.hourly_rate;
           });
-        for (let m of sorted) {
+        for (const m of sorted) {
           if (remainHours <= 0) break;
-          let maxAssignable = Math.floor(m.totalAvailable * m.member.speed_factor);
-          let assignHours = Math.min(remainHours, maxAssignable);
+          const maxAssignable = Math.floor(m.totalAvailable * m.member.speed_factor);
+          const assignHours = Math.min(remainHours, maxAssignable);
           if (assignHours > 0) {
             assignments.push({
               ...m,
@@ -78,8 +78,8 @@ export function globalFastestAssignment(
             });
             let assignEff = Math.ceil(assignHours / m.member.speed_factor);
             for (let w = 0; w < 4 && assignEff > 0; w++) {
-              let avail = m.member.available_hours[w] - (assigned[m.member.id][w] || 0);
-              let use = Math.min(avail, assignEff);
+              const avail = m.member.available_hours[w] - (assigned[m.member.id][w] || 0);
+              const use = Math.min(avail, assignEff);
               assigned[m.member.id][w] += use;
               assignEff -= use;
             }
@@ -109,10 +109,10 @@ export function globalFastestAssignment(
             if (aScore !== bScore) return aScore - bScore;
             return b.member.speed_factor - a.member.speed_factor;
           });
-        for (let m of sorted) {
+        for (const m of sorted) {
           if (remainHours <= 0) break;
-          let maxAssignable = Math.floor(m.totalAvailable * m.member.speed_factor);
-          let assignHours = Math.min(remainHours, maxAssignable);
+          const maxAssignable = Math.floor(m.totalAvailable * m.member.speed_factor);
+          const assignHours = Math.min(remainHours, maxAssignable);
           if (assignHours > 0) {
             assignments.push({
               ...m,
@@ -121,8 +121,8 @@ export function globalFastestAssignment(
             });
             let assignEff = Math.ceil(assignHours / m.member.speed_factor);
             for (let w = 0; w < 4 && assignEff > 0; w++) {
-              let avail = m.member.available_hours[w] - (assigned[m.member.id][w] || 0);
-              let use = Math.min(avail, assignEff);
+              const avail = m.member.available_hours[w] - (assigned[m.member.id][w] || 0);
+              const use = Math.min(avail, assignEff);
               assigned[m.member.id][w] += use;
               assignEff -= use;
             }
@@ -140,10 +140,10 @@ export function globalFastestAssignment(
             if (b.member.speed_factor !== a.member.speed_factor) return b.member.speed_factor - a.member.speed_factor;
             return (memberTaskCount[a.member.id] || 0) - (memberTaskCount[b.member.id] || 0);
           });
-        for (let m of sorted) {
+        for (const m of sorted) {
           if (remainHours <= 0) break;
-          let maxAssignable = Math.floor(m.totalAvailable * m.member.speed_factor);
-          let assignHours = Math.min(remainHours, maxAssignable);
+          const maxAssignable = Math.floor(m.totalAvailable * m.member.speed_factor);
+          const assignHours = Math.min(remainHours, maxAssignable);
           if (assignHours > 0) {
             assignments.push({
               ...m,
@@ -152,8 +152,8 @@ export function globalFastestAssignment(
             });
             let assignEff = Math.ceil(assignHours / m.member.speed_factor);
             for (let w = 0; w < 4 && assignEff > 0; w++) {
-              let avail = m.member.available_hours[w] - (assigned[m.member.id][w] || 0);
-              let use = Math.min(avail, assignEff);
+              const avail = m.member.available_hours[w] - (assigned[m.member.id][w] || 0);
+              const use = Math.min(avail, assignEff);
               assigned[m.member.id][w] += use;
               assignEff -= use;
             }

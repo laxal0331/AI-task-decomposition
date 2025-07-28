@@ -1,15 +1,60 @@
 import pool from './database';
 
+interface Order {
+  id: string;
+  goal: string;
+  assign_mode: string;
+  task_count: number;
+  status: string;
+  created_at: string;
+  [key: string]: unknown;
+}
+
+interface Task {
+  id: string;
+  order_id: string;
+  title_zh: string;
+  title_en: string;
+  role_zh: string;
+  role_en: string;
+  estimated_hours: number;
+  status: string;
+  assigned_member_id: string | null;
+  [key: string]: unknown;
+}
+
+interface TeamMember {
+  id: string;
+  name: string;
+  name_en: string;
+  roles: string;
+  hourly_rate: number;
+  speed_factor: number;
+  available_hours: string;
+  skills: string;
+  experience_score: number;
+  [key: string]: unknown;
+}
+
+interface ChatMessage {
+  id: string;
+  order_id: string;
+  task_id: string;
+  role: string;
+  message: string;
+  created_at: string;
+  [key: string]: unknown;
+}
+
 // 订单相关操作
 export const orderService = {
   // 创建订单
   async createOrder(orderId: string, goal: string, assignMode: string, taskCount: number = 0, lang: string = 'zh') {
     const connection = await pool.getConnection();
     try {
-      const status = lang === 'zh' ? '未开始' : 'Not Started';
       await connection.execute(
-        'INSERT INTO orders (id, goal, assign_mode, task_count, status) VALUES (?, ?, ?, ?, ?)',
-        [orderId, goal, assignMode, taskCount, status]
+        'INSERT INTO orders (id, goal, assign_mode, task_count, status, lang) VALUES (?, ?, ?, ?, ?, ?)',
+        [orderId, goal, assignMode, taskCount, '待分配', lang]
       );
     } finally {
       connection.release();
@@ -24,7 +69,7 @@ export const orderService = {
         'SELECT * FROM orders WHERE id = ?',
         [orderId]
       );
-      return (rows as any[])[0];
+      return (rows as Order[])[0];
     } finally {
       connection.release();
     }
@@ -282,7 +327,7 @@ export const migrationService = {
 // 团队成员相关服务
 export const teamMemberService = {
   // 批量插入成员
-  async bulkInsert(members: any[]) {
+  async bulkInsert(members: TeamMember[]) {
     const connection = await pool.getConnection();
     try {
       const values = members.map(m => [
@@ -309,13 +354,13 @@ export const teamMemberService = {
     const connection = await pool.getConnection();
     try {
       const [rows] = await connection.query('SELECT * FROM team_members');
-      return (rows as any[]).map(row => {
+      return (rows as TeamMember[]).map(row => {
         try {
           let availableHours = [];
           try {
             // 尝试解析为JSON数组
             availableHours = JSON.parse(row.available_hours || '[]');
-          } catch (hoursError) {
+          } catch {
             // 如果解析失败，尝试解析为字符串格式
             if (typeof row.available_hours === 'string' && row.available_hours.includes('/')) {
               availableHours = row.available_hours.split('/').map((h: string) => parseInt(h) || 0);

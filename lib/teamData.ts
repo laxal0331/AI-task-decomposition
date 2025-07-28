@@ -47,12 +47,12 @@ const roleDistribution: Record<string, number> = {
 };
 
 // 生成团队成员，主角色严格按比例分配
-let teamData: TeamMember[] = [];
+const teamData: TeamMember[] = [];
 let memberIdx = 1;
 Object.entries(roleDistribution).forEach(([role, count]) => {
   for (let i = 0; i < count; i++) {
     // 70%单角色，30%多角色
-    let roleCount = Math.random() < 0.7 ? 1 : 2;
+    const roleCount = Math.random() < 0.7 ? 1 : 2;
     let roles = [role];
     if (roleCount === 2) {
       // 除主角色外再随机分配一个不同角色，非主流职位一律用"杂项专员"

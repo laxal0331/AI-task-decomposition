@@ -1,6 +1,10 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import db from '../../../lib/database';
 
+interface DbResult {
+  affectedRows: number;
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { id } = req.query;
 
@@ -15,7 +19,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         WHERE id = ?
       `, [name, name_en, JSON.stringify([role]), hourly_rate, speed_factor, available_hours, JSON.stringify(skills), 70, id]);
 
-      if ((result as any).affectedRows > 0) {
+      if ((result as DbResult).affectedRows > 0) {
         res.status(200).json({ success: true, message: 'Developer updated successfully' });
       } else {
         res.status(404).json({ error: 'Developer not found' });
@@ -29,7 +33,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
       const [result] = await db.execute('DELETE FROM team_members WHERE id = ?', [id]);
       
-      if ((result as any).affectedRows > 0) {
+      if ((result as DbResult).affectedRows > 0) {
         res.status(200).json({ success: true, message: 'Developer deleted successfully' });
       } else {
         res.status(404).json({ error: 'Developer not found' });

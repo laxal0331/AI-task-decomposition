@@ -1,7 +1,17 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { teamMemberService } from '../../lib/dbService';
-import { seedTeamMembers } from '../../lib/teamData';
 import db from '../../lib/database';
+
+interface TeamMember {
+  id: string;
+  name: string;
+  name_en: string;
+  roles: string;
+  hourly_rate: number;
+  speed_factor: number;
+  available_hours: string;
+  skills: string;
+  experience_score: number;
+}
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'GET') {
@@ -16,22 +26,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // 直接查询数据库
       const [rows] = await db.execute('SELECT * FROM team_members ORDER BY id ASC');
       console.log('数据库查询结果:', rows);
-      console.log('获取到成员数量:', (rows as any[])?.length || 0);
+      console.log('获取到成员数量:', (rows as TeamMember[])?.length || 0);
       
-      if (!rows || (rows as any[]).length === 0) {
+      if (!rows || (rows as TeamMember[]).length === 0) {
         console.log('数据库中没有找到开发者数据');
         res.status(200).json({ members: [] });
         return;
       }
       
       // 处理数据格式
-      const members = (rows as any[]).map((row, index) => {
+      const members = (rows as TeamMember[]).map((row, index) => {
         try {
           let availableHours = [];
           try {
             // 尝试解析为JSON数组
             availableHours = JSON.parse(row.available_hours || '[]');
-          } catch (hoursError) {
+          } catch {
             // 如果解析失败，尝试解析为字符串格式
             if (typeof row.available_hours === 'string' && row.available_hours.includes('/')) {
               availableHours = row.available_hours.split('/').map((h: string) => parseInt(h) || 0);
@@ -86,7 +96,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `, [id, name, name_en, JSON.stringify([role]), hourly_rate, speed_factor, JSON.stringify(availableHoursArray), JSON.stringify(skills), 70]);
 
-      if ((result as any).affectedRows > 0) {
+      if ((result as { affectedRows: number }).affectedRows > 0) {
         res.status(201).json({ success: true, message: 'Developer created successfully', id });
       } else {
         res.status(500).json({ error: 'Failed to create developer' });

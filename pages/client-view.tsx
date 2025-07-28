@@ -1,7 +1,28 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ProgressBar } from '../lib/ProgressBar';
 import { useRouter } from 'next/router';
-import { STATUS } from './task-planner';
+
+interface Task {
+  id: string;
+  title_zh: string;
+  title_en: string;
+  role_zh: string;
+  role_en: string;
+  estimated_hours: number;
+  status: string;
+  assigned_member_id: string | null;
+  assignedMemberId?: string | null;
+  orderId?: string;
+  [key: string]: unknown;
+}
+
+const STATUS = {
+  NOT_STARTED: '未开始',
+  PENDING: '等待接受',
+  IN_PROGRESS: '进行中',
+  TESTING: '测试中',
+  COMPLETED: '已完成',
+};
 
 const texts = {
   zh: {
@@ -99,7 +120,7 @@ export default function ClientView() {
   const [lang, setLang] = useState<'zh' | 'en'>('zh');
   const t = texts[lang];
   const [memberId, setMemberId] = useState('');
-  const [tasks, setTasks] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [acceptingTaskId, setAcceptingTaskId] = useState<string | null>(null);
   const [revokingTaskId, setRevokingTaskId] = useState<string | null>(null);
   const [finishingDevTaskId, setFinishingDevTaskId] = useState<string | null>(null);
@@ -124,7 +145,7 @@ export default function ClientView() {
           const tasksData = await tasksRes.json();
           console.log('tasksData:', tasksData);
           if (tasksData.tasks) {
-            const tasksWithMember = (tasksData.tasks as any[]).map((task: any) => ({
+            const tasksWithMember = (tasksData.tasks as Task[]).map((task: Task) => ({
               ...task,
               assignedMemberId: task.assigned_member_id,
               orderId: latestOrder.id
