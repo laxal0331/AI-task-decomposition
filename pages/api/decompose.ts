@@ -1,7 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { getTasksFromAI } from "@/lib/openai";
 import { orderService, taskService, teamMemberService } from "../../lib/dbService";
-import { initDatabase } from "../../lib/database";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { goal, assignMode, lang = 'zh' } = req.body;
@@ -16,18 +15,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   console.log("DEEPSEEK_API_KEY 长度:", process.env.DEEPSEEK_API_KEY?.length || 0);
 
   try {
-    // 首先初始化数据库（如果不存在）
-    try {
-      await initDatabase();
-    } catch (dbError) {
-      console.error('Database initialization error:', dbError);
-      // 如果数据库初始化失败，返回错误
-      return res.status(500).json({ 
-        error: "数据库初始化失败，请检查MySQL连接配置", 
-        details: String(dbError) 
-      });
-    }
-
     // 生成任务
     const tasks = await getTasksFromAI(goal);
     

@@ -4,7 +4,7 @@ import { useRouter } from 'next/router';
 const texts = {
   zh: {
     title: '数据迁移',
-    description: '将现有的 localStorage 数据迁移到 MySQL 数据库',
+    description: '将现有的 localStorage 数据迁移到 Supabase 数据库',
     migrate: '开始迁移',
     migrating: '迁移中...',
     success: '迁移成功！',
@@ -17,7 +17,7 @@ const texts = {
   },
   en: {
     title: 'Data Migration',
-    description: 'Migrate existing localStorage data to MySQL database',
+    description: 'Migrate existing localStorage data to Supabase database',
     migrate: 'Start Migration',
     migrating: 'Migrating...',
     success: 'Migration successful!',
