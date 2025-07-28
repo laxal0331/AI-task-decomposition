@@ -328,7 +328,7 @@ export const migrationService = {
 // 团队成员相关服务
 export const teamMemberService = {
   // 批量插入成员
-  async bulkInsert(members: TeamMember[]) {
+  async bulkInsert(members: any[]) {
     const connection = await pool.getConnection();
     try {
       const values = members.map(m => {
@@ -361,12 +361,13 @@ export const teamMemberService = {
     const connection = await pool.getConnection();
     try {
       const [rows] = await connection.query('SELECT * FROM team_members');
-      return (rows as TeamMember[]).map(row => {
+      return (rows as any[]).map((row: any) => {
         try {
-          let availableHours = [];
+          let availableHours: number[] = [];
           try {
             // 尝试解析为JSON数组
-            availableHours = JSON.parse(row.available_hours || '[]');
+            const parsed = JSON.parse(row.available_hours || '[]');
+            availableHours = Array.isArray(parsed) ? parsed : [parsed];
           } catch {
             // 如果解析失败，尝试解析为字符串格式
             if (typeof row.available_hours === 'string' && row.available_hours.includes('/')) {
