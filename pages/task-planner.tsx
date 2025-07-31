@@ -259,6 +259,26 @@ const statusColorMap: Record<string, string> = {
 };
 
 export default function TaskPlanner() {
+  // 添加错误状态
+  const [error, setError] = useState<string | null>(null);
+  const [isClient, setIsClient] = useState(false);
+
+  // 客户端检查
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  // 错误边界
+  useEffect(() => {
+    const handleError = (error: ErrorEvent) => {
+      console.error('TaskPlanner页面错误:', error);
+      setError(error.message);
+    };
+
+    window.addEventListener('error', handleError);
+    return () => window.removeEventListener('error', handleError);
+  }, []);
+
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -282,6 +302,72 @@ export default function TaskPlanner() {
   const { orderId } = router.query;
   const [orderStatus, setOrderStatus] = useState<string | null>(null);
   
+  // 调试信息
+  useEffect(() => {
+    console.log('TaskPlanner组件已挂载');
+    console.log('当前路由:', router.asPath);
+    console.log('是否客户端:', isClient);
+  }, [router.asPath, isClient]);
+
+  // 如果有错误，显示错误信息
+  if (error) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        padding: '20px',
+        color: 'white'
+      }}>
+        <div style={{
+          maxWidth: '800px',
+          margin: '0 auto',
+          padding: '40px 20px'
+        }}>
+          <h1 style={{ fontSize: '32px', marginBottom: '20px' }}>
+            页面加载错误
+          </h1>
+          <p style={{ marginBottom: '20px' }}>
+            错误信息: {error}
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            style={{
+              background: '#4CAF50',
+              color: 'white',
+              padding: '10px 20px',
+              border: 'none',
+              borderRadius: '5px',
+              cursor: 'pointer'
+            }}
+          >
+            刷新页面
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // 如果还在服务器端渲染，显示加载状态
+  if (!isClient) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        padding: '20px',
+        color: 'white',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <h1 style={{ fontSize: '32px', marginBottom: '20px' }}>
+            加载中...
+          </h1>
+        </div>
+      </div>
+    );
+  }
+
   // 从localStorage读取订单的备用方法
   const tryLoadOrdersFromLocalStorage = useCallback(() => {
     try {

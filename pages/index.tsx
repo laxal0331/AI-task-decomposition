@@ -204,25 +204,6 @@ export default function Home() {
           {t.lang}
         </button>
         
-        {/* 添加调试链接 */}
-        <button 
-          style={{
-            position:'absolute',
-            left:24,
-            top:24,
-            zIndex:1000,
-            background: '#ff6b6b',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            padding: '8px 16px',
-            cursor: 'pointer'
-          }} 
-          onClick={() => router.push('/debug-route')}
-        >
-          调试路由
-        </button>
-        
         <main className="flex flex-col items-start justify-center min-h-screen">
           <div className="main-title-wrap">
             <h1 className="font-bold mb-4 text-gray-900 dark:text-white main-title" 
