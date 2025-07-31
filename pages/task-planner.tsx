@@ -267,8 +267,22 @@ export default function TaskPlanner() {
   const [selectedMember, setSelectedMember] = useState<any>(null);
   const [popupPos, setPopupPos] = useState<{x: number, y: number} | null>(null);
   const [popupTaskIdx, setPopupTaskIdx] = useState<number | null>(null);
+  const [assignMode, setAssignMode] = useState<'slow' | 'balanced' | 'fast'>('slow');
+  const [assignedTasks, setAssignedTasks] = useState<{ [memberId: string]: number[] }>({});
+  const [lang, setLang] = useState<'zh' | 'en'>('zh');
+  const t = texts[lang];
+  const router = useRouter();
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalMsg, setModalMsg] = useState("");
+  const [dbOrderId, setDbOrderId] = useState<string | null>(null);
+  const [ordersOpen, setOrdersOpen] = useState(false);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [deleteOrderId, setDeleteOrderId] = useState<string | null>(null);
+  const [teamData, setTeamData] = useState<any[]>([]);
+  const { orderId } = router.query;
+  const [orderStatus, setOrderStatus] = useState<string | null>(null);
   
-  // 提取的自动分配函数
+  // 提取的自动分配函数 - 现在在组件内部定义，可以访问所有状态
   const performAutoAssignment = (tasksToAssign: Task[], teamMembers: any[], currentAssignMode: 'slow' | 'balanced' | 'fast') => {
     let autoSelected: { [taskIdx: number]: string } = {};
     
@@ -408,21 +422,6 @@ export default function TaskPlanner() {
     setPopupTaskIdx(taskIndex);
   };
   
-  const [assignMode, setAssignMode] = useState<'slow' | 'balanced' | 'fast'>('slow');
-  const [assignedTasks, setAssignedTasks] = useState<{ [memberId: string]: number[] }>({});
-  const [lang, setLang] = useState<'zh' | 'en'>('zh');
-  const t = texts[lang];
-  const router = useRouter();
-  const [modalOpen, setModalOpen] = useState(false);
-  const [modalMsg, setModalMsg] = useState("");
-  const [dbOrderId, setDbOrderId] = useState<string | null>(null);
-  const [ordersOpen, setOrdersOpen] = useState(false);
-  const [orders, setOrders] = useState<any[]>([]);
-  const [deleteOrderId, setDeleteOrderId] = useState<string | null>(null);
-  const [teamData, setTeamData] = useState<any[]>([]);
-  const { orderId } = router.query;
-  const [orderStatus, setOrderStatus] = useState<string | null>(null);
-
   const handleSubmit = async () => {
     if (input.trim().length < 6) {
       setModalMsg(t.modalInputTip);
