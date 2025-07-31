@@ -217,7 +217,7 @@ export default function Home() {
             >
               {lang === 'zh'
                 ? (<><span>AI</span><br/><span>远程项目管理</span></>)
-                : (<span className="en-title">AI Remote Project Management</span>)}
+                : (<><span>AI</span><br/><span>Remote Project Management</span></>)}
             </h1>
             <p className="text-xl text-gray-600 dark:text-gray-300 main-subtitle"
               style={{
@@ -687,16 +687,6 @@ export default function Home() {
         @media (max-width: 414px) {
           .main-title-wrap {
             margin-top: 80px !important;
-          }
-        }
-        .en-title {
-          white-space: nowrap;
-          display: inline-block;
-        }
-        @media (max-width: 550px) {
-          .en-title {
-            white-space: normal;
-            display: block;
           }
         }
       `}</style>

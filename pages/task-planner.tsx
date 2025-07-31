@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from 'next/router';
 import { roleMap } from '../lib/teamData';
 import { smartMatchDevelopersForTask, SmartMatchResult, globalFastestAssignment } from '../lib/smartMatch';
@@ -282,8 +282,54 @@ export default function TaskPlanner() {
   const { orderId } = router.query;
   const [orderStatus, setOrderStatus] = useState<string | null>(null);
   
+  // 从localStorage读取订单的备用方法
+  const tryLoadOrdersFromLocalStorage = useCallback(() => {
+    try {
+      const savedOrders = JSON.parse(getLocalStorage('orders') || '[]');
+      console.log('从localStorage读取到订单数量:', savedOrders.length);
+      
+      if (savedOrders.length > 0) {
+        // 按时间降序排序（最新的在前）
+        const sortedOrders = savedOrders.sort((a: any, b: any) => {
+          const timeA = parseInt(a.id) || 0;
+          const timeB = parseInt(b.id) || 0;
+          return timeB - timeA;
+        });
+        setOrders(sortedOrders);
+      }
+    } catch (error) {
+      console.error('从localStorage读取订单失败:', error);
+    }
+  }, []);
+
+  const fetchOrders = useCallback(async () => {
+    try {
+      const res = await fetch('/api/orders');
+      const data = await res.json();
+      
+      if (data.orders && data.orders.length > 0) {
+        // 按时间降序排序（最新的在前）
+        const sortedOrders = data.orders.sort((a: any, b: any) => {
+          const timeA = parseInt(a.id) || 0;
+          const timeB = parseInt(b.id) || 0;
+          return timeB - timeA;
+        });
+        setOrders(sortedOrders);
+      } else {
+        // API返回空数据，尝试从localStorage读取
+        console.log('API返回空订单，尝试从localStorage读取...');
+        tryLoadOrdersFromLocalStorage();
+      }
+    } catch (error) {
+      console.error('Fetch orders error:', error);
+      // API调用失败，尝试从localStorage读取
+      console.log('API调用失败，尝试从localStorage读取订单...');
+      tryLoadOrdersFromLocalStorage();
+    }
+  }, [tryLoadOrdersFromLocalStorage]);
+  
   // 提取的自动分配函数 - 现在在组件内部定义，可以访问所有状态
-  const performAutoAssignment = (tasksToAssign: Task[], teamMembers: any[], currentAssignMode: 'slow' | 'balanced' | 'fast') => {
+  const performAutoAssignment = useCallback((tasksToAssign: Task[], teamMembers: any[], currentAssignMode: 'slow' | 'balanced' | 'fast') => {
     let autoSelected: { [taskIdx: number]: string } = {};
     
     if (currentAssignMode === 'fast') {
@@ -389,7 +435,22 @@ export default function TaskPlanner() {
     
     setSelectedMembers(autoSelected);
     console.log('异步自动分配完成:', autoSelected);
-  };
+  }, [assignedTasks]);
+
+  // 简化的模式切换自动分配：只在模式切换时重新分配
+  useEffect(() => {
+    if (tasks.length > 0 && teamData.length > 0) {
+      console.log('模式切换，重新执行自动分配');
+      setSelectedMembers({});
+      performAutoAssignment(tasks, teamData, assignMode);
+    }
+  }, [assignMode, tasks, teamData, performAutoAssignment]);
+
+  useEffect(() => {
+    if (ordersOpen) {
+      fetchOrders();
+    }
+  }, [ordersOpen, fetchOrders]);
 
   // 处理成员点击弹窗的通用函数
   const handleMemberClick = (e: React.MouseEvent, member: any, taskIndex: number) => {
@@ -421,7 +482,7 @@ export default function TaskPlanner() {
     setPopupPos({ x, y });
     setPopupTaskIdx(taskIndex);
   };
-  
+
   const handleSubmit = async () => {
     if (input.trim().length < 6) {
       setModalMsg(t.modalInputTip);
@@ -533,67 +594,6 @@ export default function TaskPlanner() {
     const thisTaskHours = tasks[taskIdx]?.estimated_hours || 0;
     return used + thisTaskHours > dev.available_hours;
   }
-
-  // 简化的模式切换自动分配：只在模式切换时重新分配
-  useEffect(() => {
-    if (tasks.length > 0 && teamData.length > 0) {
-      console.log('模式切换，重新执行自动分配');
-      setSelectedMembers({});
-      performAutoAssignment(tasks, teamData, assignMode);
-    }
-  }, [assignMode]);
-
-  useEffect(() => {
-    if (ordersOpen) {
-      fetchOrders();
-    }
-  }, [ordersOpen]);
-
-  const fetchOrders = async () => {
-    try {
-      const res = await fetch('/api/orders');
-      const data = await res.json();
-      
-      if (data.orders && data.orders.length > 0) {
-        // 按时间降序排序（最新的在前）
-        const sortedOrders = data.orders.sort((a: any, b: any) => {
-          const timeA = parseInt(a.id) || 0;
-          const timeB = parseInt(b.id) || 0;
-          return timeB - timeA;
-        });
-        setOrders(sortedOrders);
-      } else {
-        // API返回空数据，尝试从localStorage读取
-        console.log('API返回空订单，尝试从localStorage读取...');
-        tryLoadOrdersFromLocalStorage();
-      }
-    } catch (error) {
-      console.error('Fetch orders error:', error);
-      // API调用失败，尝试从localStorage读取
-      console.log('API调用失败，尝试从localStorage读取订单...');
-      tryLoadOrdersFromLocalStorage();
-    }
-  };
-
-  // 从localStorage读取订单的备用方法
-  const tryLoadOrdersFromLocalStorage = () => {
-    try {
-      const savedOrders = JSON.parse(getLocalStorage('orders') || '[]');
-      console.log('从localStorage读取到订单数量:', savedOrders.length);
-      
-      if (savedOrders.length > 0) {
-        // 按时间降序排序（最新的在前）
-        const sortedOrders = savedOrders.sort((a: any, b: any) => {
-          const timeA = parseInt(a.id) || 0;
-          const timeB = parseInt(b.id) || 0;
-          return timeB - timeA;
-        });
-        setOrders(sortedOrders);
-      }
-    } catch (error) {
-      console.error('从localStorage读取订单失败:', error);
-    }
-  };
 
   const handleDeleteOrder = async (orderId: string) => {
     try {
