@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from 'next/router';
 import { roleMap } from '../lib/teamData';
 import { smartMatchDevelopersForTask, SmartMatchResult, globalFastestAssignment } from '../lib/smartMatch';
@@ -309,6 +309,15 @@ export default function TaskPlanner() {
     console.log('是否客户端:', isClient);
   }, [router.asPath, isClient]);
 
+  // URL变化时自动刷新页面
+  useEffect(() => {
+    if (isClient && router.asPath === '/task-planner') {
+      // 如果当前页面是task-planner，且是客户端渲染，则刷新页面
+      console.log('检测到task-planner页面，自动刷新');
+      window.location.reload();
+    }
+  }, [router.asPath, isClient]);
+
   // 如果有错误，显示错误信息
   if (error) {
     return (
@@ -367,9 +376,9 @@ export default function TaskPlanner() {
       </div>
     );
   }
-
+  
   // 从localStorage读取订单的备用方法
-  const tryLoadOrdersFromLocalStorage = useCallback(() => {
+  const tryLoadOrdersFromLocalStorage = () => {
     try {
       const savedOrders = JSON.parse(getLocalStorage('orders') || '[]');
       console.log('从localStorage读取到订单数量:', savedOrders.length);
@@ -386,9 +395,9 @@ export default function TaskPlanner() {
     } catch (error) {
       console.error('从localStorage读取订单失败:', error);
     }
-  }, []);
+  };
 
-  const fetchOrders = useCallback(async () => {
+  const fetchOrders = async () => {
     try {
       const res = await fetch('/api/orders');
       const data = await res.json();
@@ -412,10 +421,10 @@ export default function TaskPlanner() {
       console.log('API调用失败，尝试从localStorage读取订单...');
       tryLoadOrdersFromLocalStorage();
     }
-  }, [tryLoadOrdersFromLocalStorage]);
+  };
   
   // 提取的自动分配函数 - 现在在组件内部定义，可以访问所有状态
-  const performAutoAssignment = useCallback((tasksToAssign: Task[], teamMembers: any[], currentAssignMode: 'slow' | 'balanced' | 'fast') => {
+  const performAutoAssignment = (tasksToAssign: Task[], teamMembers: any[], currentAssignMode: 'slow' | 'balanced' | 'fast') => {
     let autoSelected: { [taskIdx: number]: string } = {};
     
     if (currentAssignMode === 'fast') {
@@ -521,7 +530,7 @@ export default function TaskPlanner() {
     
     setSelectedMembers(autoSelected);
     console.log('异步自动分配完成:', autoSelected);
-  }, [assignedTasks]);
+  };
 
   // 简化的模式切换自动分配：只在模式切换时重新分配
   useEffect(() => {
@@ -530,13 +539,13 @@ export default function TaskPlanner() {
       setSelectedMembers({});
       performAutoAssignment(tasks, teamData, assignMode);
     }
-  }, [assignMode, tasks, teamData, performAutoAssignment]);
+  }, [assignMode, tasks, teamData]);
 
   useEffect(() => {
     if (ordersOpen) {
       fetchOrders();
     }
-  }, [ordersOpen, fetchOrders]);
+  }, [ordersOpen]);
 
   // 处理成员点击弹窗的通用函数
   const handleMemberClick = (e: React.MouseEvent, member: any, taskIndex: number) => {
