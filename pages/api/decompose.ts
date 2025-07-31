@@ -12,7 +12,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // 调试环境变量
   console.log("环境变量检查:");
   console.log("DEEPSEEK_API_KEY 存在:", !!process.env.DEEPSEEK_API_KEY);
+  console.log("OPENAI_API_KEY 存在:", !!process.env.OPENAI_API_KEY);
   console.log("DEEPSEEK_API_KEY 长度:", process.env.DEEPSEEK_API_KEY?.length || 0);
+  console.log("OPENAI_API_KEY 长度:", process.env.OPENAI_API_KEY?.length || 0);
+
+  // 检查是否有API密钥
+  if (!process.env.DEEPSEEK_API_KEY && !process.env.OPENAI_API_KEY) {
+    console.error("缺少API密钥配置");
+    return res.status(500).json({ 
+      error: "缺少API密钥配置", 
+      details: "请配置DEEPSEEK_API_KEY或OPENAI_API_KEY环境变量" 
+    });
+  }
 
   try {
     // 生成任务

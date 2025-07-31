@@ -309,73 +309,15 @@ export default function TaskPlanner() {
     console.log('是否客户端:', isClient);
   }, [router.asPath, isClient]);
 
-  // URL变化时自动刷新页面
-  useEffect(() => {
-    if (isClient && router.asPath === '/task-planner') {
-      // 如果当前页面是task-planner，且是客户端渲染，则刷新页面
-      console.log('检测到task-planner页面，自动刷新');
-      window.location.reload();
-    }
-  }, [router.asPath, isClient]);
+  // 移除导致无限循环的自动刷新逻辑
+  // useEffect(() => {
+  //   if (isClient && router.asPath === '/task-planner') {
+  //     console.log('检测到task-planner页面，自动刷新');
+  //     window.location.reload();
+  //   }
+  // }, [router.asPath, isClient]);
 
-  // 如果有错误，显示错误信息
-  if (error) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        padding: '20px',
-        color: 'white'
-      }}>
-        <div style={{
-          maxWidth: '800px',
-          margin: '0 auto',
-          padding: '40px 20px'
-        }}>
-          <h1 style={{ fontSize: '32px', marginBottom: '20px' }}>
-            页面加载错误
-          </h1>
-          <p style={{ marginBottom: '20px' }}>
-            错误信息: {error}
-          </p>
-          <button
-            onClick={() => window.location.reload()}
-            style={{
-              background: '#4CAF50',
-              color: 'white',
-              padding: '10px 20px',
-              border: 'none',
-              borderRadius: '5px',
-              cursor: 'pointer'
-            }}
-          >
-            刷新页面
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // 如果还在服务器端渲染，显示加载状态
-  if (!isClient) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        padding: '20px',
-        color: 'white',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center'
-      }}>
-        <div style={{ textAlign: 'center' }}>
-          <h1 style={{ fontSize: '32px', marginBottom: '20px' }}>
-            加载中...
-          </h1>
-        </div>
-      </div>
-    );
-  }
+  // 从localStorage读取订单的备用方法
   
   // 从localStorage读取订单的备用方法
   const tryLoadOrdersFromLocalStorage = () => {
@@ -400,6 +342,24 @@ export default function TaskPlanner() {
   const fetchOrders = async () => {
     try {
       const res = await fetch('/api/orders');
+      
+      // 检查响应状态
+      if (!res.ok) {
+        console.error('API响应错误:', res.status, res.statusText);
+        const errorText = await res.text();
+        console.error('错误响应内容:', errorText);
+        throw new Error(`API错误: ${res.status} ${res.statusText}`);
+      }
+      
+      // 检查内容类型
+      const contentType = res.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        console.error('响应不是JSON格式:', contentType);
+        const responseText = await res.text();
+        console.error('响应内容:', responseText);
+        throw new Error('API返回的不是JSON格式');
+      }
+      
       const data = await res.json();
       
       if (data.orders && data.orders.length > 0) {
@@ -591,6 +551,24 @@ export default function TaskPlanner() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ goal: input, assignMode, lang }),
       });
+      
+      // 检查响应状态
+      if (!res.ok) {
+        console.error('Decompose API响应错误:', res.status, res.statusText);
+        const errorText = await res.text();
+        console.error('错误响应内容:', errorText);
+        throw new Error(`API错误: ${res.status} ${res.statusText}`);
+      }
+      
+      // 检查内容类型
+      const contentType = res.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        console.error('响应不是JSON格式:', contentType);
+        const responseText = await res.text();
+        console.error('响应内容:', responseText);
+        throw new Error('API返回的不是JSON格式');
+      }
+      
       const data = await res.json();
       
       if (data.error) {
@@ -1020,6 +998,64 @@ export default function TaskPlanner() {
       }
     }
   }, [router.query.reassignTask, orderId, tasks]);
+
+  // 条件渲染 - 移到所有useEffect之后
+  if (error) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        padding: '20px',
+        color: 'white'
+      }}>
+        <div style={{
+          maxWidth: '800px',
+          margin: '0 auto',
+          padding: '40px 20px'
+        }}>
+          <h1 style={{ fontSize: '32px', marginBottom: '20px' }}>
+            页面加载错误
+          </h1>
+          <p style={{ marginBottom: '20px' }}>
+            错误信息: {error}
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            style={{
+              background: '#4CAF50',
+              color: 'white',
+              padding: '10px 20px',
+              border: 'none',
+              borderRadius: '5px',
+              cursor: 'pointer'
+            }}
+          >
+            刷新页面
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isClient) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        padding: '20px',
+        color: 'white',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <h1 style={{ fontSize: '32px', marginBottom: '20px' }}>
+            加载中...
+          </h1>
+        </div>
+      </div>
+    );
+  }
 
   // 在组件内部定义 mainContent
   console.log("调试信息:", {
