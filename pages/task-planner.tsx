@@ -3,6 +3,29 @@ import { useRouter } from 'next/router';
 import { roleMap } from '../lib/teamData';
 import { smartMatchDevelopersForTask, SmartMatchResult, globalFastestAssignment } from '../lib/smartMatch';
 
+// 添加客户端检查函数
+const isClient = typeof window !== 'undefined';
+
+// 安全的localStorage访问函数
+const getLocalStorage = (key: string, defaultValue: string = '[]') => {
+  if (!isClient) return defaultValue;
+  try {
+    return localStorage.getItem(key) || defaultValue;
+  } catch (error) {
+    console.error('localStorage访问失败:', error);
+    return defaultValue;
+  }
+};
+
+const setLocalStorage = (key: string, value: string) => {
+  if (!isClient) return;
+  try {
+    localStorage.setItem(key, value);
+  } catch (error) {
+    console.error('localStorage设置失败:', error);
+  }
+};
+
 interface Task {
   title: string;
   role: string;
@@ -431,8 +454,8 @@ export default function TaskPlanner() {
         console.log('在客户端保存数据到localStorage...');
         
         // 读取现有数据
-        const existingOrders = JSON.parse(localStorage.getItem('orders') || '[]');
-        const existingTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+        const existingOrders = JSON.parse(getLocalStorage('orders') || '[]');
+        const existingTasks = JSON.parse(getLocalStorage('tasks') || '[]');
         
         console.log('现有订单数量:', existingOrders.length);
         console.log('现有任务数量:', existingTasks.length);
@@ -451,8 +474,8 @@ export default function TaskPlanner() {
         existingTasks.push(...processedTasks);
         
         // 保存到localStorage
-        localStorage.setItem('orders', JSON.stringify(existingOrders));
-        localStorage.setItem('tasks', JSON.stringify(existingTasks));
+        setLocalStorage('orders', JSON.stringify(existingOrders));
+        setLocalStorage('tasks', JSON.stringify(existingTasks));
         
         console.log('保存后订单数量:', existingOrders.length);
         console.log('保存后任务数量:', existingTasks.length);
@@ -556,7 +579,7 @@ export default function TaskPlanner() {
   // 从localStorage读取订单的备用方法
   const tryLoadOrdersFromLocalStorage = () => {
     try {
-      const savedOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+      const savedOrders = JSON.parse(getLocalStorage('orders') || '[]');
       console.log('从localStorage读取到订单数量:', savedOrders.length);
       
       if (savedOrders.length > 0) {
@@ -579,8 +602,8 @@ export default function TaskPlanner() {
       console.log('删除订单ID:', orderId);
       
       // 1. 删除localStorage中的订单和相关任务
-      const savedOrders = JSON.parse(localStorage.getItem('orders') || '[]');
-      const savedTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+      const savedOrders = JSON.parse(getLocalStorage('orders') || '[]');
+      const savedTasks = JSON.parse(getLocalStorage('tasks') || '[]');
       
       // 过滤掉要删除的订单
       const filteredOrders = savedOrders.filter((o: any) => o.id !== orderId);
@@ -588,8 +611,8 @@ export default function TaskPlanner() {
       const filteredTasks = savedTasks.filter((t: any) => t.order_id !== orderId);
       
       // 保存更新后的数据
-      localStorage.setItem('orders', JSON.stringify(filteredOrders));
-      localStorage.setItem('tasks', JSON.stringify(filteredTasks));
+      setLocalStorage('orders', JSON.stringify(filteredOrders));
+      setLocalStorage('tasks', JSON.stringify(filteredTasks));
       
       console.log(`✅ 本地数据删除完成`);
       console.log(`- 剩余订单: ${filteredOrders.length}`);
@@ -753,7 +776,7 @@ export default function TaskPlanner() {
         } else {
           // API返回空数据，尝试从localStorage获取
           console.log('API返回空成员数据，尝试从localStorage获取...');
-          const savedMembers = JSON.parse(localStorage.getItem('teamMembers') || '[]');
+          const savedMembers = JSON.parse(getLocalStorage('teamMembers') || '[]');
           console.log('localStorage中成员数量:', savedMembers.length);
           
           if (savedMembers.length > 0) {
@@ -771,7 +794,7 @@ export default function TaskPlanner() {
       } catch (error) {
         console.error('获取团队成员失败:', error);
         // API调用失败，尝试从localStorage获取
-        const savedMembers = JSON.parse(localStorage.getItem('teamMembers') || '[]');
+        const savedMembers = JSON.parse(getLocalStorage('teamMembers') || '[]');
         if (savedMembers.length > 0) {
           setTeamData(savedMembers);
           console.log('API失败，从localStorage加载成员数据:', savedMembers.length);
@@ -796,8 +819,8 @@ export default function TaskPlanner() {
         console.log('订单ID:', orderId);
         
         // 首先尝试从localStorage加载数据
-        const savedOrders = JSON.parse(localStorage.getItem('orders') || '[]');
-        const savedTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+        const savedOrders = JSON.parse(getLocalStorage('orders') || '[]');
+        const savedTasks = JSON.parse(getLocalStorage('tasks') || '[]');
         
         console.log('localStorage中的订单数量:', savedOrders.length);
         console.log('localStorage中的任务数量:', savedTasks.length);
@@ -1402,8 +1425,8 @@ export default function TaskPlanner() {
                     console.log('开始完整的任务分配流程...');
                     
                     // 1. 读取当前数据
-                    const savedTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
-                    const savedOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+                    const savedTasks = JSON.parse(getLocalStorage('tasks') || '[]');
+                    const savedOrders = JSON.parse(getLocalStorage('orders') || '[]');
                     // 直接使用组件状态中的 teamData，确保数据一致性
                     const currentTeamMembers = teamData;
                     
@@ -1480,11 +1503,11 @@ export default function TaskPlanner() {
                     }
                     
                     // 5. 保存所有数据
-                    localStorage.setItem('tasks', JSON.stringify(savedTasks));
-                    localStorage.setItem('orders', JSON.stringify(savedOrders));
+                    setLocalStorage('tasks', JSON.stringify(savedTasks));
+                    setLocalStorage('orders', JSON.stringify(savedOrders));
                     
                     // 6. 验证保存结果
-                    const verifyTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+                    const verifyTasks = JSON.parse(getLocalStorage('tasks') || '[]');
                     const assignedTasks = verifyTasks.filter((t: any) => t.assigned_member_id);
                     console.log(`✅ 验证结果: ${assignedTasks.length} 个任务已分配成员`);
                     

@@ -1,5 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
+
+// 添加客户端检查
+const isClient = typeof window !== 'undefined';
 
 const texts = {
   zh: {
@@ -40,6 +43,8 @@ export default function MigratePage() {
 
   // 分析现有数据
   const analyzeData = () => {
+    if (!isClient) return;
+    
     try {
       const orders = JSON.parse(localStorage.getItem('orders') || '[]');
       let totalTasks = 0;
@@ -74,6 +79,13 @@ export default function MigratePage() {
     }
   };
 
+  // 在客户端加载时分析数据
+  useEffect(() => {
+    if (isClient) {
+      analyzeData();
+    }
+  }, []);
+
   // 执行迁移
   const handleMigrate = async () => {
     setMigrating(true);
@@ -98,11 +110,6 @@ export default function MigratePage() {
       setMigrating(false);
     }
   };
-
-  // 页面加载时分析数据
-  useState(() => {
-    analyzeData();
-  });
 
   return (
     <div className="max-w-2xl mx-auto mt-10 p-6">
