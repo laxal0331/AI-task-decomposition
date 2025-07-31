@@ -3,8 +3,8 @@
   "installCommand": "npm install",
   "framework": "nextjs",
   "functions": {
-    "pages/api/**/*.ts": {
-      "maxDuration": 30
+    "pages/api/decompose.ts": {
+      "maxDuration": 60
     }
   }
 } 

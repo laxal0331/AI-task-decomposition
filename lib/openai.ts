@@ -7,6 +7,9 @@ export async function getTasksFromAI(goal: string) {
     // DeepSeek API 调用
     try {
       console.log("开始调用DeepSeek API，目标：", goal);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 25000); // 25秒超时
+      
       const res = await fetch("https://api.deepseek.com/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -27,7 +30,11 @@ export async function getTasksFromAI(goal: string) {
           ],
           temperature: 0,
         }),
+        signal: controller.signal,
       });
+      
+      clearTimeout(timeoutId);
+      
       if (!res.ok) {
         const errorText = await res.text();
         throw new Error(`DeepSeek API请求失败: ${res.status} - ${errorText}`);
@@ -63,12 +70,18 @@ export async function getTasksFromAI(goal: string) {
       }
       return newTasks;
     } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        throw new Error("DeepSeek API 请求超时，请稍后重试");
+      }
       throw new Error(`DeepSeek AI任务拆解失败: ${err instanceof Error ? err.message : String(err)}`);
     }
   } else if (openaiKey) {
     // OpenAI API 调用
     try {
       console.log("开始调用OpenAI API，目标：", goal);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 25000); // 25秒超时
+      
       const res = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -89,7 +102,11 @@ export async function getTasksFromAI(goal: string) {
           ],
           temperature: 0,
         }),
+        signal: controller.signal,
       });
+      
+      clearTimeout(timeoutId);
+      
       if (!res.ok) {
         const errorText = await res.text();
         throw new Error(`OpenAI API请求失败: ${res.status} - ${errorText}`);
@@ -125,6 +142,9 @@ export async function getTasksFromAI(goal: string) {
       }
       return newTasks;
     } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        throw new Error("OpenAI API 请求超时，请稍后重试");
+      }
       throw new Error(`OpenAI AI任务拆解失败: ${err instanceof Error ? err.message : String(err)}`);
     }
   } else {
