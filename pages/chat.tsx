@@ -1,5 +1,5 @@
 import { useRouter } from 'next/router';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 const texts = {
   zh: {
@@ -40,10 +40,15 @@ export default function Chat() {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // 获取聊天消息
-  const fetchMessages = async () => {
+  const fetchMessages = useCallback(async () => {
+    if (!orderId || !taskId) return;
+    
     try {
+      console.log('Fetching messages for:', { orderId, taskId });
       const res = await fetch(`/api/chat?orderId=${orderId}&taskId=${taskId}`);
       const data = await res.json();
+      
+      console.log('Chat API response:', data);
       
       if (data.messages) {
         const formattedMessages = data.messages.map((msg: any) => ({
@@ -51,12 +56,17 @@ export default function Chat() {
           time: new Date(msg.created_at).getTime(),
           role: msg.role
         }));
+        console.log('Formatted messages:', formattedMessages);
         setMessages(formattedMessages);
+      } else {
+        console.log('No messages found');
+        setMessages([]);
       }
     } catch (error) {
       console.error('Fetch messages error:', error);
+      setMessages([]);
     }
-  };
+  }, [orderId, taskId]);
 
   // 自动识别URL中的role参数，或用localStorage记住身份
   useEffect(() => {
@@ -96,7 +106,23 @@ export default function Chat() {
   }, [messages]);
 
   const sendMsg = async () => {
-    if (!input.trim() || !role || !orderId || !taskId) return;
+    if (!input.trim()) {
+      console.log('Input is empty');
+      return;
+    }
+    
+    if (!role) {
+      console.log('Role not set');
+      return;
+    }
+    
+    if (!orderId || !taskId) {
+      console.log('Missing orderId or taskId:', { orderId, taskId });
+      return;
+    }
+    
+    console.log('Sending message:', { orderId, taskId, role, message: input });
+    console.log('发送消息前的检查通过');
     
     try {
       const res = await fetch('/api/chat', {
@@ -110,15 +136,22 @@ export default function Chat() {
         })
       });
       
+      const responseData = await res.json();
+      console.log('Send message response:', responseData);
+      console.log('Response status:', res.status);
+      console.log('Response ok:', res.ok);
+      
       if (res.ok) {
         setInput('');
         // 立即刷新消息列表
         await fetchMessages();
       } else {
-        console.error('Send message failed');
+        console.error('Send message failed:', responseData);
+        alert(`发送失败: ${responseData.error || '未知错误'}`);
       }
     } catch (error) {
       console.error('Send message error:', error);
+      alert(`发送失败: ${error}`);
     }
   };
 
@@ -146,6 +179,8 @@ export default function Chat() {
         </div>
         
         <h2 style={{fontWeight:700,fontSize:26,marginBottom:20}}>{t.title} {orderId && taskId ? `#${String(orderId).slice(-4)}-${String(taskId).slice(-4)}` : ''}</h2>
+        
+
         <div style={{minHeight:320,maxHeight:480,overflowY:'auto',background:'#f8fafc',borderRadius:10,padding:18,marginBottom:20}}>
           {messages.length === 0 ? <div style={{color:'#888'}}>{t.empty}</div> :
             messages.map((msg,i)=>{

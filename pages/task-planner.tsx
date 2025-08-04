@@ -148,6 +148,11 @@ const texts = {
       redecompose: '重新拆解任务',
       viewDetails: '查看详情',
       home: '首页',
+      // 错误提示信息
+      aiNoUnderstandError: 'AI无法理解您的需求，请提供更清晰、具体的项目目标，例如：开发一个在线购物网站，包含用户注册、商品浏览、购物车、支付功能',
+      aiDataFormatError: 'AI返回的任务数据格式有误，请重新尝试。如果问题持续出现，请尝试使用更具体的项目描述。',
+      aiNotTaskDataError: 'AI返回的不是任务数据，而是说明文字，请提供更明确的项目目标。',
+      aiInvalidDataError: 'AI返回的任务数据无效，请尝试提供更详细的项目需求描述。',
     },
       en: {
       title: 'AI Task Decomposition',
@@ -196,6 +201,11 @@ const texts = {
       redecompose: 'Re-decompose Task',
       viewDetails: 'View Details',
       home: 'Home',
+      // Error messages
+      aiNoUnderstandError: 'AI cannot understand your requirements. Please provide clearer and more specific project goals, for example: Develop an online shopping website with user registration, product browsing, shopping cart, and payment functions',
+      aiDataFormatError: 'The task data returned by AI is in the wrong format. Please try again. If the problem persists, try using more specific project descriptions.',
+      aiNotTaskDataError: 'AI returned explanatory text instead of task data. Please provide clearer project goals.',
+      aiInvalidDataError: 'The task data returned by AI is invalid. Please try providing more detailed project requirements.',
     }
 };
 
@@ -258,6 +268,30 @@ const statusColorMap: Record<string, string> = {
   'Completed': '#16a34a',
 };
 
+// 任务角色映射表 - 定义为全局常量
+const taskRoleMap: { [key: string]: string } = {
+  '前端工程师': '前端工程师',
+  '后端工程师': '后端工程师', 
+  'UI设计师': 'UI设计师',
+  'UX设计师': 'UX设计师',
+  '测试工程师': '测试工程师',
+  '数据库工程师': '数据库工程师',
+  '产品经理': '产品经理',
+  'DevOps工程师': 'DevOps工程师',
+  '全栈工程师': '全栈工程师',
+  '杂项专员': '杂项专员',
+  // 添加常见的任务角色映射
+  '运维工程师': 'DevOps工程师',
+  '项目经理': '产品经理',
+  'PM': '产品经理',
+  'QA': '测试工程师',
+  '质量保证': '测试工程师',
+  'DBA': '数据库工程师',
+  '系统管理员': 'DevOps工程师',
+  '架构师': '全栈工程师',
+  '技术负责人': '全栈工程师'
+};
+
 export default function TaskPlanner() {
   // 添加错误状态
   const [error, setError] = useState<string | null>(null);
@@ -298,9 +332,13 @@ export default function TaskPlanner() {
   const [ordersOpen, setOrdersOpen] = useState(false);
   const [orders, setOrders] = useState<any[]>([]);
   const [deleteOrderId, setDeleteOrderId] = useState<string | null>(null);
+  const [isDeletingOrder, setIsDeletingOrder] = useState<boolean>(false);
   const [teamData, setTeamData] = useState<any[]>([]);
   const { orderId } = router.query;
   const [orderStatus, setOrderStatus] = useState<string | null>(null);
+  // 🔧 简化状态管理，移除多余的延迟机制状态
+  const [isFirstDecomposition, setIsFirstDecomposition] = useState<boolean>(true);
+  const [showAutoSelectButton, setShowAutoSelectButton] = useState<boolean>(false);
   
   // 调试信息
   useEffect(() => {
@@ -308,6 +346,89 @@ export default function TaskPlanner() {
     console.log('当前路由:', router.asPath);
     console.log('是否客户端:', isClient);
   }, [router.asPath, isClient]);
+
+  // 处理URL中的orderId参数，从数据库加载订单数据
+  useEffect(() => {
+    const handleDataLoad = async () => {
+      if (router.query.orderId && isClient) {
+        console.log('检测到URL中的orderId:', router.query.orderId);
+        loadOrderFromDatabase(router.query.orderId as string);
+      } else if (isClient && !router.query.orderId) {
+        // 页面刷新后如果没有orderId，尝试从localStorage恢复状态
+        console.log('🔄 页面刷新检测到无orderId，尝试恢复本地状态');
+        await tryLoadOrdersFromLocalStorage();
+        
+        // 如果localStorage中有数据，让兜底机制处理自动选择
+        console.log('🔄 页面刷新后恢复状态，依靠兜底机制处理自动选择');
+      }
+    };
+
+    handleDataLoad();
+  }, [router.query.orderId, isClient]);
+
+  // 从数据库加载订单数据的函数
+  const loadOrderFromDatabase = async (orderId: string) => {
+    try {
+      console.log('从数据库加载订单数据:', orderId);
+      const res = await fetch(`/api/orders?orderId=${orderId}`);
+      if (!res.ok) {
+        throw new Error(`获取订单失败: ${res.status}`);
+      }
+      
+      const data = await res.json();
+      console.log('从数据库加载的订单数据:', data);
+      
+      if (data.tasks && data.tasks.length > 0) {
+        const normalizedTasks = data.tasks.map((task: any) => ({
+          ...task,
+          title: task.title_zh || task.title || '',
+          role: task.role_zh || task.role || '',
+          status: task.status || STATUS.NOT_STARTED,
+          id: task.id
+        }));
+        
+        setTasks(normalizedTasks);
+        setDbOrderId(orderId);
+        
+        if (data.members) {
+          setTeamData(data.members);
+          
+          // 构建已有的分配关系
+          const existingAssignments: { [taskIdx: number]: string } = {};
+          normalizedTasks.forEach((task: any, idx: number) => {
+            if (task.assigned_member_id) {
+              existingAssignments[idx] = task.assigned_member_id;
+            }
+          });
+          
+          // 如果已有分配，直接使用；否则执行自动分配
+          if (Object.keys(existingAssignments).length > 0) {
+            console.log('使用已有的分配关系:', existingAssignments);
+            setSelectedMembers(existingAssignments);
+          } else {
+            console.log('没有现有分配，执行自动分配...');
+            
+            // 🔧 使用统一的同步自动选择函数
+            const autoSelected = executeImmediateAutoSelection(
+              normalizedTasks, 
+              data.members, 
+              assignMode, 
+              '数据库订单加载'
+            );
+            
+            setSelectedMembers(autoSelected);
+            console.log('📊 数据库订单数据加载完成', {
+              tasksCount: normalizedTasks.length,
+              membersCount: data.members?.length || 0,
+              autoSelectedCount: Object.keys(autoSelected).length
+            });
+          }
+        }
+      }
+    } catch (error) {
+      console.error('从数据库加载订单失败:', error);
+    }
+  };
 
   // 移除导致无限循环的自动刷新逻辑
   // useEffect(() => {
@@ -320,7 +441,7 @@ export default function TaskPlanner() {
   // 从localStorage读取订单的备用方法
   
   // 从localStorage读取订单的备用方法
-  const tryLoadOrdersFromLocalStorage = () => {
+  const tryLoadOrdersFromLocalStorage = async () => {
     try {
       const savedOrders = JSON.parse(getLocalStorage('orders') || '[]');
       console.log('从localStorage读取到订单数量:', savedOrders.length);
@@ -333,6 +454,32 @@ export default function TaskPlanner() {
           return timeB - timeA;
         });
         setOrders(sortedOrders);
+        
+        // 如果当前页面没有任务数据，尝试从最新的订单恢复
+        if (tasks.length === 0 && sortedOrders.length > 0) {
+          const latestOrder = sortedOrders[0];
+          console.log('🔄 页面刷新后尝试从最新订单恢复任务数据:', latestOrder.id);
+          
+          if (latestOrder.tasks && latestOrder.tasks.length > 0) {
+            setTasks(latestOrder.tasks);
+            setDbOrderId(latestOrder.id);
+            
+            // 尝试加载团队数据
+            try {
+              const res = await fetch('/api/members');
+              const data = await res.json();
+              if (data.members) {
+                setTeamData(data.members);
+                console.log('✅ 成功加载团队数据用于页面刷新恢复');
+                
+                // 页面刷新恢复完成，依靠兜底机制处理自动选择
+                console.log('🔄 页面刷新恢复完成，依靠兜底机制处理自动选择');
+              }
+            } catch (error) {
+              console.error('页面刷新后加载团队数据失败:', error);
+            }
+          }
+        }
       }
     } catch (error) {
       console.error('从localStorage读取订单失败:', error);
@@ -369,22 +516,107 @@ export default function TaskPlanner() {
           const timeB = parseInt(b.id) || 0;
           return timeB - timeA;
         });
+        console.log('📄 从服务器获取到订单:', sortedOrders.length, '个');
         setOrders(sortedOrders);
       } else {
-        // API返回空数据，尝试从localStorage读取
-        console.log('API返回空订单，尝试从localStorage读取...');
-        tryLoadOrdersFromLocalStorage();
+        // API返回空数据，检查localStorage是否有数据
+        const localOrders = JSON.parse(getLocalStorage('orders') || '[]');
+        if (localOrders.length > 0) {
+          console.log('API返回空订单，但localStorage有数据，保持当前状态...');
+          // 如果localStorage有数据但服务器没有，保持当前状态，不清空
+          if (orders.length === 0) {
+            // 只有当前端也没有数据时，才从localStorage恢复
+            await tryLoadOrdersFromLocalStorage();
+          }
+        } else {
+          console.log('API和localStorage都没有订单数据');
+          setOrders([]); // 确实没有数据时才清空
+        }
       }
     } catch (error) {
       console.error('Fetch orders error:', error);
       // API调用失败，尝试从localStorage读取
       console.log('API调用失败，尝试从localStorage读取订单...');
-      tryLoadOrdersFromLocalStorage();
+      await tryLoadOrdersFromLocalStorage();
     }
   };
   
+  // 🔧 统一的同步自动选择函数 - 直接使用传入的数据，不依赖状态
+  const executeImmediateAutoSelection = (tasksData: Task[], membersData: any[], mode: 'slow' | 'balanced' | 'fast', source: string): { [taskIdx: number]: string } => {
+    console.log(`🚀 执行即时自动选择 - 来源: ${source}`, {
+      任务数: tasksData.length,
+      成员数: membersData.length,
+      模式: mode
+    });
+    
+    const autoSelected: { [taskIdx: number]: string } = {};
+    
+    tasksData.forEach((task: any, idx: number) => {
+      const mainstreamRoles = [
+        '前端工程师', '后端工程师', 'UI设计师', 'UX设计师', '测试工程师', '数据库工程师',
+        '产品经理', 'DevOps工程师', '全栈工程师'
+      ];
+      
+      let mappedRole = taskRoleMap[task.role] || task.role;
+      if (!mainstreamRoles.includes(mappedRole)) {
+        mappedRole = '杂项专员';
+      }
+      
+      let matchResults = smartMatchDevelopersForTask(
+        { ...task, role: mappedRole },
+        membersData,
+        {},
+        mode
+      ).filter(r => r.canAssign);
+      
+      if (matchResults.length === 0) {
+        matchResults = smartMatchDevelopersForTask(
+          { ...task, role: mappedRole },
+          membersData,
+          {},
+          mode
+        );
+      }
+      
+      if (matchResults.length > 0) {
+        autoSelected[idx] = matchResults[0].member.id;
+        console.log(`✅ 任务 ${idx} (${task.title}) 即时分配给: ${matchResults[0].member.name}`);
+      } else {
+        // 尝试全栈工程师作为后备
+        const fallbackResults = smartMatchDevelopersForTask(
+          { ...task, role: '全栈工程师' },
+          membersData,
+          {},
+          mode
+        );
+        
+        if (fallbackResults.length > 0) {
+          autoSelected[idx] = fallbackResults[0].member.id;
+          console.log(`✅ 任务 ${idx} (${task.title}) 使用全栈后备: ${fallbackResults[0].member.name}`);
+        } else {
+          console.log(`❌ 任务 ${idx} (${task.title}) 无法找到合适成员`);
+        }
+      }
+    });
+    
+    console.log(`✅ 即时自动选择完成 - 来源: ${source}`, {
+      成功分配: Object.keys(autoSelected).length,
+      总任务数: tasksData.length,
+      分配详情: autoSelected
+    });
+    
+    return autoSelected;
+  };
+
   // 提取的自动分配函数 - 现在在组件内部定义，可以访问所有状态
-  const performAutoAssignment = (tasksToAssign: Task[], teamMembers: any[], currentAssignMode: 'slow' | 'balanced' | 'fast') => {
+  const performAutoAssignment = (tasksToAssign: Task[], teamMembers: any[], currentAssignMode: 'slow' | 'balanced' | 'fast', source: string = 'unknown') => {
+    console.log(`🚀 开始执行自动分配 - 来源: ${source}`, {
+      任务数: tasksToAssign.length,
+      成员数: teamMembers.length,
+      模式: currentAssignMode,
+      当前已选择: Object.keys(selectedMembers).length
+    });
+    
     let autoSelected: { [taskIdx: number]: string } = {};
     
     if (currentAssignMode === 'fast') {
@@ -402,7 +634,7 @@ export default function TaskPlanner() {
           '产品经理', 'DevOps工程师', '全栈工程师'
         ];
         // 先尝试角色映射，再检查是否在主流角色中，最后才用杂项专员
-        let mappedRole = roleMap[task.role] || task.role;
+        let mappedRole = taskRoleMap[task.role] || task.role;
         if (!mainstreamRoles.includes(mappedRole)) {
           mappedRole = '杂项专员';
         }
@@ -453,14 +685,16 @@ export default function TaskPlanner() {
             teamMembers,
             assignedTasks,
             currentAssignMode
-          ).filter(r => r.canAssign);
+          );
           
           if (fallbackResults.length > 0) {
             const fallbackBest = fallbackResults[0];
             autoSelected[idx] = fallbackBest.member.id;
             const effectiveHours = Math.ceil(task.estimated_hours / fallbackBest.member.speed_factor);
             memberWorkloads[fallbackBest.member.id] = (memberWorkloads[fallbackBest.member.id] || 0) + effectiveHours;
-            console.log(`✅ 为任务 ${idx} 分配了全栈工程师: ${fallbackBest.member.name}`);
+            console.log(`✅ 为任务 ${idx} 分配了全栈工程师后备: ${fallbackBest.member.name}`);
+          } else {
+            console.log(`❌ 任务 ${idx} 彻底无法找到合适成员`);
           }
         }
       });
@@ -472,7 +706,7 @@ export default function TaskPlanner() {
           '产品经理', 'DevOps工程师', '全栈工程师'
         ];
         // 先尝试角色映射，再检查是否在主流角色中，最后才用杂项专员
-        let mappedRole = roleMap[task.role] || task.role;
+        let mappedRole = taskRoleMap[task.role] || task.role;
         if (!mainstreamRoles.includes(mappedRole)) {
           mappedRole = '杂项专员';
         }
@@ -536,7 +770,7 @@ export default function TaskPlanner() {
           '产品经理', 'DevOps工程师', '全栈工程师'
         ];
         // 先尝试角色映射，再检查是否在主流角色中，最后才用杂项专员
-        let mappedRole = roleMap[task.role] || task.role;
+        let mappedRole = taskRoleMap[task.role] || task.role;
         if (!mainstreamRoles.includes(mappedRole)) {
           mappedRole = '杂项专员';
         }
@@ -571,35 +805,97 @@ export default function TaskPlanner() {
             teamMembers,
             assignedTasks,
             currentAssignMode
-          ).filter(r => r.canAssign);
+          );
           
           if (fallbackResults.length > 0) {
             fallbackResults.sort((a, b) => a.member.hourly_rate - b.member.hourly_rate);
             autoSelected[i] = fallbackResults[0].member.id;
-            console.log(`✅ 为任务 ${i} 分配了全栈工程师: ${fallbackResults[0].member.name}`);
+            console.log(`✅ 为任务 ${i} 分配了全栈工程师后备: ${fallbackResults[0].member.name}`);
+          } else {
+            console.log(`❌ 任务 ${i} 彻底无法找到合适成员`);
           }
         }
       });
     }
     
     setSelectedMembers(autoSelected);
-    console.log('异步自动分配完成:', autoSelected);
+    console.log(`✅ 自动分配完成 - 来源: ${source}`, {
+      成功分配: Object.keys(autoSelected).length,
+      总任务数: tasksToAssign.length,
+      分配详情: autoSelected
+    });
   };
 
-  // 简化的模式切换自动分配：只在模式切换时重新分配
+  // 🔧 简化的模式切换自动分配
   useEffect(() => {
     if (tasks.length > 0 && teamData.length > 0) {
       console.log('模式切换，重新执行自动分配');
-      setSelectedMembers({});
-      performAutoAssignment(tasks, teamData, assignMode);
+      
+      // 如果是第一次拆解且显示自动选择按钮，则不自动选择
+      if (showAutoSelectButton) {
+        console.log('模式切换时检测到第一次拆解，不自动选择，保持按钮显示');
+        return;
+      }
+      
+      const autoSelected = executeImmediateAutoSelection(
+        tasks, 
+        teamData, 
+        assignMode, 
+        '模式切换'
+      );
+      setSelectedMembers(autoSelected);
+      // 模式切换后隐藏自动选择按钮
+      setShowAutoSelectButton(false);
     }
-  }, [assignMode, tasks, teamData]);
+  }, [assignMode, showAutoSelectButton]);
+
+
 
   useEffect(() => {
-    if (ordersOpen) {
+    if (ordersOpen && !isDeletingOrder) {
+      // 只有在没有进行删除操作时才自动刷新订单列表
+      console.log('📄 订单面板打开，刷新订单列表');
       fetchOrders();
+    } else if (ordersOpen && isDeletingOrder) {
+      console.log('⏸️ 订单删除中，跳过自动刷新');
     }
-  }, [ordersOpen]);
+  }, [ordersOpen, isDeletingOrder]);
+
+
+
+  // 🔧 简化的兜底检查机制 - 仅在必要时检查
+  useEffect(() => {
+    if (tasks.length > 0 && teamData.length > 0) {
+      const selectedCount = Object.keys(selectedMembers).length;
+      const tasksCount = tasks.length;
+      
+      // 如果选择不完整，等待2秒后重新选择（给其他机制时间）
+      // 但如果是第一次拆解且显示自动选择按钮，则不触发兜底修复
+      if (selectedCount < tasksCount && !showAutoSelectButton) {
+        console.log('🔍 检测到选择不完整，准备兜底修复', {
+          已选择: selectedCount,
+          总任务: tasksCount,
+          显示自动选择按钮: showAutoSelectButton
+        });
+        
+        const timer = setTimeout(() => {
+          const currentSelected = Object.keys(selectedMembers).length;
+          if (currentSelected < tasksCount && !showAutoSelectButton) {
+            console.log('🔧 执行兜底自动选择修复');
+            const autoSelected = executeImmediateAutoSelection(
+              tasks, 
+              teamData, 
+              assignMode, 
+              '兜底修复'
+            );
+            setSelectedMembers(autoSelected);
+          }
+        }, 2000); // 2秒延迟
+        
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [tasks.length, teamData.length, selectedMembers, showAutoSelectButton]);
 
   // 处理成员点击弹窗的通用函数
   const handleMemberClick = (e: React.MouseEvent, member: any, taskIndex: number) => {
@@ -633,7 +929,10 @@ export default function TaskPlanner() {
   };
 
   const handleSubmit = async () => {
-    if (input.trim().length < 6) {
+    const trimmedInput = input.trim();
+    
+    // 基本长度检查
+    if (trimmedInput.length < 2) {
       setModalMsg(t.modalInputTip);
       setModalOpen(true);
       return;
@@ -651,6 +950,15 @@ export default function TaskPlanner() {
         console.error('Decompose API响应错误:', res.status, res.statusText);
         const errorText = await res.text();
         console.error('错误响应内容:', errorText);
+        
+        // 特殊处理500错误，提供更友好的提示
+        if (res.status === 500) {
+          setModalMsg('AI处理失败，请尝试提供更详细的项目描述，或者稍后再试。');
+          setModalOpen(true);
+          setLoading(false);
+          return;
+        }
+        
         throw new Error(`API错误: ${res.status} ${res.statusText}`);
       }
       
@@ -660,13 +968,21 @@ export default function TaskPlanner() {
         console.error('响应不是JSON格式:', contentType);
         const responseText = await res.text();
         console.error('响应内容:', responseText);
-        throw new Error('API返回的不是JSON格式');
+        
+        setModalMsg('AI返回格式错误，请尝试重新描述您的项目需求。');
+        setModalOpen(true);
+        setLoading(false);
+        return;
       }
       
       const data = await res.json();
       
       if (data.error) {
-        throw new Error(data.error);
+        console.error('API返回错误:', data.error);
+        setModalMsg('AI处理出错，请尝试提供更清楚的项目描述。');
+        setModalOpen(true);
+        setLoading(false);
+        return;
       }
       
       console.log('=== 任务分解返回数据 ===');
@@ -720,7 +1036,8 @@ export default function TaskPlanner() {
         id: task.id  // 直接使用数据库返回的ID，不重新生成
       }));
       console.log('处理后的任务数据:', tasksWithId);
-      setTasks(tasksWithId.map(normalizeTaskStatus));
+      const normalizedTasks = tasksWithId.map(normalizeTaskStatus);
+      setTasks(normalizedTasks);
       // 重置已分配任务状态，确保重新拆解时有完整的成员选择
       setAssignedTasks({});
       setDbOrderId(data.orderId);
@@ -729,10 +1046,29 @@ export default function TaskPlanner() {
       if (data.members) {
         setTeamData(data.members);
         
-        // 异步等待状态更新完成后执行自动分配
-        setTimeout(() => {
-          performAutoAssignment(tasksWithId, data.members, assignMode);
-        }, 0);
+        // 🔧 第一次拆解任务时不自动选择，显示按钮让用户手动触发
+        if (isFirstDecomposition) {
+          console.log('🚀 第一次拆解任务，不自动选择，显示自动选择按钮');
+          setShowAutoSelectButton(true);
+          setSelectedMembers({}); // 清空选择
+          setIsFirstDecomposition(false); // 标记不再是第一次拆解
+        } else {
+          // 非第一次拆解，使用自动选择
+          const autoSelected = executeImmediateAutoSelection(
+            normalizedTasks, 
+            data.members, 
+            assignMode, 
+            'API任务分解'
+          );
+          setSelectedMembers(autoSelected);
+          setShowAutoSelectButton(false); // 非第一次拆解时不显示按钮
+          console.log('🚀 API任务分解和即时自动选择完成', {
+            tasksCount: normalizedTasks.length,
+            membersCount: data.members?.length || 0,
+            autoSelectedCount: Object.keys(autoSelected).length,
+            assignMode
+          });
+        }
       }
       
       // 任务分解成功后，如果订单面板打开，刷新订单列表
@@ -743,7 +1079,22 @@ export default function TaskPlanner() {
       }
     } catch (error) {
       console.error('Submit error:', error);
-      setModalMsg(`提交失败: ${String(error)}`);
+      
+      // 根据错误类型提供更友好的提示
+      let userMessage = '';
+      const errorStr = String(error);
+      
+      if (errorStr.includes('500 Internal Server Error')) {
+        userMessage = 'AI处理失败，请尝试：\n• 提供更详细的项目描述\n• 使用具体的功能说明\n• 稍后重试';
+      } else if (errorStr.includes('网络')) {
+        userMessage = '网络连接失败，请检查网络后重试';
+      } else if (errorStr.includes('JSON')) {
+        userMessage = 'AI返回数据格式错误，请重试或联系管理员';
+      } else {
+        userMessage = '提交失败，请重试。如果问题持续，请稍后再试。';
+      }
+      
+      setModalMsg(userMessage);
       setModalOpen(true);
     } finally {
       setLoading(false);
@@ -764,6 +1115,7 @@ export default function TaskPlanner() {
 
   const handleDeleteOrder = async (orderId: string) => {
     try {
+      setIsDeletingOrder(true); // 设置删除状态
       console.log('=== 删除订单 ===');
       console.log('删除订单ID:', orderId);
       
@@ -790,8 +1142,24 @@ export default function TaskPlanner() {
         const timeB = parseInt(b.id) || 0;
         return timeB - timeA;
       });
+      
+      console.log('🗑️ 删除后更新前端订单状态:', {
+        删除的订单ID: orderId,
+        删除前订单数量: savedOrders.length,
+        删除后订单数量: sortedOrders.length,
+        剩余订单IDs: sortedOrders.map(o => o.id)
+      });
+      
       setOrders(sortedOrders);
       setDeleteOrderId(null);
+      
+      // 确保状态更新后验证
+      setTimeout(() => {
+        console.log('🔍 验证删除后的订单状态:', {
+          前端orders数量: orders.length,
+          localStorage订单数量: JSON.parse(getLocalStorage('orders') || '[]').length
+        });
+      }, 100);
       
       // 3. 尝试同步到服务器（不阻塞）
     try {
@@ -801,17 +1169,28 @@ export default function TaskPlanner() {
       
       if (res.ok) {
           console.log('✅ 服务器删除成功');
+          // 删除成功后，重新从服务器获取最新订单列表
+          setTimeout(() => {
+            fetchOrders();
+          }, 500); // 延迟500ms确保服务器数据已更新
         } else {
           console.log('⚠️ 服务器删除失败，但本地数据已删除');
+          // 即使服务器删除失败，也保持本地删除的状态
       }
       } catch (syncError) {
         console.log('⚠️ 服务器删除出错，但本地数据已删除:', syncError);
+        // 网络错误，保持本地删除的状态
       }
       
     } catch (error) {
       console.error('删除订单失败:', error);
       setModalMsg(`删除失败: ${String(error)}`);
       setModalOpen(true);
+    } finally {
+      // 无论成功还是失败，都清除删除状态
+      setTimeout(() => {
+        setIsDeletingOrder(false);
+      }, 1000); // 延迟1秒清除，确保删除操作完全完成
     }
   };
 
@@ -932,13 +1311,20 @@ export default function TaskPlanner() {
         if (data.members && data.members.length > 0) {
           console.log('从API获取到成员数量:', data.members.length);
           setTeamData(data.members);
-          // 如果此时已经有任务了，立即执行自动分配
-          setTimeout(() => {
-            if (tasks.length > 0) {
-              console.log('fetchMembers完成，执行自动分配');
-              performAutoAssignment(tasks, data.members, assignMode);
-            }
-          }, 0);
+          
+          // 🔧 不再依赖异步状态，使用组件状态快照检查
+          if (tasks.length > 0) {
+            console.log('fetchMembers完成，立即执行自动分配');
+            const autoSelected = executeImmediateAutoSelection(
+              tasks, 
+              data.members, 
+              assignMode, 
+              'API成员加载完成'
+            );
+            setSelectedMembers(autoSelected);
+          } else {
+            console.log('fetchMembers完成，但尚无任务数据，跳过自动选择');
+          }
         } else {
           // API返回空数据，尝试从localStorage获取
           console.log('API返回空成员数据，尝试从localStorage获取...');
@@ -948,13 +1334,20 @@ export default function TaskPlanner() {
           if (savedMembers.length > 0) {
             setTeamData(savedMembers);
             console.log('成功从localStorage加载成员数据');
-            // 如果此时已经有任务了，立即执行自动分配
-            setTimeout(() => {
-              if (tasks.length > 0) {
-                console.log('localStorage成员加载完成，执行自动分配');
-                performAutoAssignment(tasks, savedMembers, assignMode);
-              }
-            }, 0);
+            
+            // 🔧 不再依赖异步状态，使用组件状态快照检查
+            if (tasks.length > 0) {
+              console.log('localStorage成员加载完成，立即执行自动分配');
+              const autoSelected = executeImmediateAutoSelection(
+                tasks, 
+                savedMembers, 
+                assignMode, 
+                'localStorage成员加载'
+              );
+              setSelectedMembers(autoSelected);
+            } else {
+              console.log('localStorage成员加载完成，但尚无任务数据，跳过自动选择');
+            }
           }
         }
       } catch (error) {
@@ -964,13 +1357,20 @@ export default function TaskPlanner() {
         if (savedMembers.length > 0) {
           setTeamData(savedMembers);
           console.log('API失败，从localStorage加载成员数据:', savedMembers.length);
-          // 如果此时已经有任务了，立即执行自动分配
-          setTimeout(() => {
-            if (tasks.length > 0) {
-              console.log('错误处理-成员加载完成，执行自动分配');
-              performAutoAssignment(tasks, savedMembers, assignMode);
-            }
-          }, 0);
+          
+          // 🔧 不再依赖异步状态，使用组件状态快照检查
+          if (tasks.length > 0) {
+            console.log('错误处理-成员加载完成，立即执行自动分配');
+            const autoSelected = executeImmediateAutoSelection(
+              tasks, 
+              savedMembers, 
+              assignMode, 
+              '错误恢复-成员加载'
+            );
+            setSelectedMembers(autoSelected);
+          } else {
+            console.log('错误处理-成员加载完成，但尚无任务数据，跳过自动选择');
+          }
         }
       }
     }
@@ -1028,22 +1428,34 @@ export default function TaskPlanner() {
             setAssignedTasks({});
           if (data.members) {
             setTeamData(data.members);
-            // 从订单加载时也要异步执行自动分配
-            if (data.tasks && data.tasks.length > 0) {
-              setTimeout(() => {
-                performAutoAssignment(data.tasks.map(normalizeTaskStatus), data.members, data.order?.assign_mode || 'slow');
-              }, 0);
-            }
+                    // 🔧 从订单加载时立即执行同步自动分配（保持原来的逻辑）
+        if (data.tasks && data.tasks.length > 0) {
+          const normalizedTasks = data.tasks.map(normalizeTaskStatus);
+          const autoSelected = executeImmediateAutoSelection(
+            normalizedTasks, 
+            data.members, 
+            data.order?.assign_mode || 'slow', 
+            '订单数据加载1'
+          );
+          setSelectedMembers(autoSelected);
+          setShowAutoSelectButton(false); // 从订单进入时不显示自动选择按钮
+        }
           } else {
             const membersRes = await fetch('/api/members');
             const membersData = await membersRes.json();
             if (membersData.members) {
               setTeamData(membersData.members);
-              // 从订单加载时也要异步执行自动分配
+              // 🔧 从订单加载时立即执行同步自动分配（保持原来的逻辑）
               if (data.tasks && data.tasks.length > 0) {
-                setTimeout(() => {
-                  performAutoAssignment(data.tasks.map(normalizeTaskStatus), membersData.members, data.order?.assign_mode || 'slow');
-                }, 0);
+                const normalizedTasks = data.tasks.map(normalizeTaskStatus);
+                const autoSelected = executeImmediateAutoSelection(
+                  normalizedTasks, 
+                  membersData.members, 
+                  data.order?.assign_mode || 'slow', 
+                  '订单数据加载2'
+                );
+                setSelectedMembers(autoSelected);
+                setShowAutoSelectButton(false); // 从订单进入时不显示自动选择按钮
               }
             }
           }
@@ -1054,10 +1466,16 @@ export default function TaskPlanner() {
           const membersData = await membersRes.json();
           if (membersData.members) {
             setTeamData(membersData.members);
-            // 从localStorage加载时也要异步执行自动分配
-            setTimeout(() => {
-              performAutoAssignment(targetTasks.map(normalizeTaskStatus), membersData.members, targetOrder.assign_mode || 'slow');
-            }, 0);
+            // 🔧 从localStorage加载时立即执行同步自动分配（保持原来的逻辑）
+            const normalizedTasks = targetTasks.map(normalizeTaskStatus);
+            const autoSelected = executeImmediateAutoSelection(
+              normalizedTasks, 
+              membersData.members, 
+              targetOrder.assign_mode || 'slow', 
+              'localStorage恢复'
+            );
+            setSelectedMembers(autoSelected);
+            setShowAutoSelectButton(false); // 从localStorage恢复时不显示自动选择按钮
           }
         }
       })();
@@ -1169,7 +1587,42 @@ export default function TaskPlanner() {
     // 任务分配界面内容 - 有任务数据时显示
     mainContent = (
       <>
-        <h1 style={{ color: '#fff', fontWeight: 700, fontSize: 32 }}>{t.title}</h1>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+          <h1 style={{ color: '#fff', fontWeight: 700, fontSize: 32 }}>{t.title}</h1>
+          
+          {/* 自动选择按钮 - 仅在第一次拆解任务时显示 */}
+          {tasks.length > 0 && showAutoSelectButton && (
+            <button
+              style={{ 
+                background: '#3b82f6', 
+                color: 'white',
+                border: 'none',
+                padding: '8px 16px',
+                borderRadius: '6px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+              onClick={() => {
+                console.log('🚀 用户点击自动选择按钮');
+                const autoSelected = executeImmediateAutoSelection(
+                  tasks, 
+                  teamData, 
+                  assignMode, 
+                  '用户手动触发'
+                );
+                setSelectedMembers(autoSelected);
+                setShowAutoSelectButton(false); // 隐藏按钮
+                setIsFirstDecomposition(false); // 标记不再是第一次拆解
+              }}
+            >
+              🤖 {lang === 'zh' ? '自动选择成员' : 'Auto Select'}
+            </button>
+          )}
+        </div>
         
         {/* 重新拆解功能 - 对所有有任务的订单都显示 */}
         <div className="mb-6 p-4 border rounded bg-gray-50">
@@ -1209,6 +1662,8 @@ export default function TaskPlanner() {
               </label>
             </div>
           </div>
+          
+
           {tasks.map((task, i) => {
             // 统一角色名称，非主流职位自动分配到"杂项专员"
             const mainstreamRoles = [
@@ -1587,6 +2042,8 @@ export default function TaskPlanner() {
             );
           })()}
           
+
+          
           {/* 确认分配按钮 */}
           {tasks.length > 0 && (
             <div className="mt-6 text-center" style={{ display: 'flex', justifyContent: 'center', gap: 16 }}>
@@ -1616,18 +2073,18 @@ export default function TaskPlanner() {
                       const task = tasks[i];
                       let memberId = selectedMembers[i];
                       
-                      // 如果没有手动选择，则自动选择
+                      // 如果没有手动选择，则自动选择（但不显示给用户）
                       if (!memberId) {
-                        console.log(`任务 ${i} 未选择开发者，自动选择...`);
+                        console.log(`任务 ${i} 未选择开发者，静默自动选择...`);
                         const taskRecommendations = smartMatchDevelopersForTask(task, teamData, {}, 'fast');
                         if (taskRecommendations.length > 0) {
                           memberId = taskRecommendations[0].member.id;
-                          console.log(`✅ 自动选择任务 ${i} 的开发者: ${taskRecommendations[0].member.name} (ID: ${memberId})`);
+                          console.log(`✅ 静默自动选择任务 ${i} 的开发者: ${taskRecommendations[0].member.name} (ID: ${memberId})`);
                         } else {
                           // 如果还是没有，选择第一个团队成员
                           if (teamData.length > 0) {
                             memberId = teamData[0].id;
-                            console.log(`⚠️ 使用默认开发者: ${teamData[0].name} (ID: ${memberId})`);
+                            console.log(`⚠️ 静默使用默认开发者: ${teamData[0].name} (ID: ${memberId})`);
                           }
                         }
                       }
@@ -2070,7 +2527,7 @@ export default function TaskPlanner() {
                     ? selectedMember.roles.join(', ')
                     : selectedMember.roles.map((role: string) => {
                         // 角色名称的英文映射
-                        const roleMap: { [key: string]: string } = {
+                        const roleEnMap: { [key: string]: string } = {
                           '前端工程师': 'Frontend Engineer',
                           '后端工程师': 'Backend Engineer',
                           'UI设计师': 'UI Designer',
@@ -2082,7 +2539,7 @@ export default function TaskPlanner() {
                           '全栈工程师': 'Full Stack Engineer',
                           '杂项专员': 'Generalist'
                         };
-                        return roleMap[role] || role;
+                        return roleEnMap[role] || role;
                       }).join(', ')
                   }
                 </div>

@@ -82,8 +82,14 @@ const texts = {
 
 export default function Home() {
   const [lang, setLang] = useState<'zh' | 'en'>('zh');
+  const [mounted, setMounted] = useState(false);
   const t = texts[lang];
   const router = useRouter();
+
+  // 防止 SSR Hydration 不匹配
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   const [bg2Opacity, setBg2Opacity] = useState(0);
   // 动画用refs
   const introRefs = [
@@ -201,7 +207,7 @@ export default function Home() {
           className="btn" 
           onClick={()=>setLang(lang==='zh'?'en':'zh')}
         >
-          {t.lang}
+          {mounted ? t.lang : 'English'}
         </button>
         
         <main className="flex flex-col items-start justify-center min-h-screen">
@@ -215,9 +221,13 @@ export default function Home() {
                 lineHeight: 1.1,
               }}
             >
-              {lang === 'zh'
-                ? (<><span>AI</span><br/><span>远程项目管理</span></>)
-                : (<><span>AI</span><br/><span>Remote Project Management</span></>)}
+              {!mounted ? (
+                <><span>AI</span><br/><span>远程项目管理</span></>
+              ) : lang === 'zh' ? (
+                <><span>AI</span><br/><span>远程项目管理</span></>
+              ) : (
+                <><span>AI</span><br/><span>Remote Project Management</span></>
+              )}
             </h1>
             <p className="text-xl text-gray-600 dark:text-gray-300 main-subtitle"
               style={{
@@ -229,7 +239,7 @@ export default function Home() {
                 marginBottom: 32,
               }}
             >
-              {t.subtitle}
+              {mounted ? t.subtitle : '智能任务拆解与团队分配'}
             </p>
           </div>
 
@@ -259,8 +269,8 @@ export default function Home() {
                 <rect x="16" y="28" width="40" height="16" rx="8" fill="#3ecf8e"/>
                 <circle cx="40" cy="56" r="12" fill="#3ecf8e"/>
               </svg>
-              <h3 style={{ fontSize: 'clamp(18px, 3vw, 24px)', fontWeight: 700, color: '#1e293b', marginBottom: 8 }}>{t.taskPlanner}</h3>
-              <p style={{ fontSize: 'clamp(12px, 2vw, 16px)', color: '#3b4a5a', opacity: 0.98, fontWeight: 500, textAlign: 'center' }}>{t.taskPlannerDesc}</p>
+                              <h3 style={{ fontSize: 'clamp(18px, 3vw, 24px)', fontWeight: 700, color: '#1e293b', marginBottom: 8 }}>{mounted ? t.taskPlanner : '任务拆解'}</h3>
+                <p style={{ fontSize: 'clamp(12px, 2vw, 16px)', color: '#3b4a5a', opacity: 0.98, fontWeight: 500, textAlign: 'center' }}>{mounted ? t.taskPlannerDesc : 'AI 智能拆解项目任务'}</p>
             </div>
             <div
               className="card-responsive card-hover-blue"
@@ -283,8 +293,8 @@ export default function Home() {
                 <circle cx="40" cy="40" r="32" fill="#3ecf8e" opacity="0.12"/>
                 <path d="M40 32a8 8 0 110 16 8 8 0 010-16zm0 18c-8 0-16 4-16 8v4h32v-4c0-4-8-8-16-8z" fill="#3ecf8e"/>
               </svg>
-              <h3 style={{ fontSize: 'clamp(18px, 3vw, 24px)', fontWeight: 700, color: '#1e293b', marginBottom: 8 }}>{t.clientView}</h3>
-              <p style={{ fontSize: 'clamp(12px, 2vw, 16px)', color: '#3b4a5a', opacity: 0.98, fontWeight: 500, textAlign: 'center' }}>{t.clientViewDesc}</p>
+                              <h3 style={{ fontSize: 'clamp(18px, 3vw, 24px)', fontWeight: 700, color: '#1e293b', marginBottom: 8 }}>{mounted ? t.clientView : '开发者端'}</h3>
+                <p style={{ fontSize: 'clamp(12px, 2vw, 16px)', color: '#3b4a5a', opacity: 0.98, fontWeight: 500, textAlign: 'center' }}>{mounted ? t.clientViewDesc : '接任务和沟通'}</p>
             </div>
           </div>
           {/* 下滑提示文字 */}
@@ -308,7 +318,7 @@ export default function Home() {
             <span
               style={{ display: 'inline-block', padding: '6px 18px', borderRadius: 8 }}
             >
-              {t.scrollTip}
+              {mounted ? t.scrollTip : '往下滑动查看详情介绍'}
               <br />
               <span style={{ display: 'inline-block', marginTop: 6 }}>
                 <svg width="38" height="24" viewBox="0 0 24 16" fill="none" xmlns="http://www.w3.org/2000/svg">

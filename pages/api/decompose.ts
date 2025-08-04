@@ -31,7 +31,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log("开始AI任务分解，目标:", goal);
     
     // 生成任务
-    const tasks = await getTasksFromAI(goal);
+    const tasks = await getTasksFromAI(goal, lang);
     console.log("AI任务分解完成，任务数量:", tasks.length);
     
     // 获取所有团队成员

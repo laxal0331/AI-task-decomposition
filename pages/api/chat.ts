@@ -16,7 +16,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res.status(200).json({ message: '消息发送成功' });
     } catch (error) {
       console.error('Send message error:', error);
-      res.status(500).json({ error: '发送消息失败', details: String(error) });
+      console.error('Error details:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint
+      });
+      res.status(500).json({ 
+        error: '发送消息失败', 
+        details: error.message || String(error),
+        code: error.code,
+        hint: error.hint
+      });
     }
   } else if (req.method === 'GET') {
     try {

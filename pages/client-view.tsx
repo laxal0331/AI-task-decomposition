@@ -16,7 +16,17 @@ interface Task {
   [key: string]: unknown;
 }
 
+// 兼容task-planner的状态常量（英文格式）
 const STATUS = {
+  NOT_STARTED: 'NOT_STARTED',
+  PENDING: 'PENDING',
+  IN_PROGRESS: 'IN_PROGRESS',
+  TESTING: 'TESTING',
+  COMPLETED: 'COMPLETED',
+};
+
+// 兼容老版本的中文状态
+const STATUS_LEGACY = {
   NOT_STARTED: '未开始',
   PENDING: '等待接受',
   IN_PROGRESS: '进行中',
@@ -87,33 +97,55 @@ const texts = {
   },
 };
 
-const statusMap = {
-  zh: {
-    [STATUS.NOT_STARTED]: '未开始',
-    [STATUS.PENDING]: '等待接受',
-    [STATUS.IN_PROGRESS]: '进行中',
-    [STATUS.TESTING]: '测试中',
-    [STATUS.COMPLETED]: '已完成',
-    // 兼容老数据
-    '未开始': '未开始',
-    '等待接受': '等待接受',
-    '进行中': '进行中',
-    '测试中': '测试中',
-    '已完成': '已完成',
-  },
-  en: {
-    [STATUS.NOT_STARTED]: 'Not Started',
-    [STATUS.PENDING]: 'Pending Acceptance',
-    [STATUS.IN_PROGRESS]: 'In Progress',
-    [STATUS.TESTING]: 'Testing',
-    [STATUS.COMPLETED]: 'Completed',
-    // 兼容老数据
-    '未开始': 'Not Started',
-    '等待接受': 'Pending Acceptance',
-    '进行中': 'In Progress',
-    '测试中': 'Testing',
-    '已完成': 'Completed',
-  }
+// 状态显示函数
+const getStatusDisplay = (status: string, lang: 'zh' | 'en') => {
+  // 统一的状态映射
+  const statusMapping: Record<string, Record<string, string>> = {
+    // 英文常量格式
+    'NOT_STARTED': { zh: '未开始', en: 'Not Started' },
+    'PENDING': { zh: '等待接受', en: 'Pending Acceptance' },
+    'IN_PROGRESS': { zh: '进行中', en: 'In Progress' },
+    'TESTING': { zh: '测试中', en: 'Testing' },
+    'COMPLETED': { zh: '已完成', en: 'Completed' },
+    // 中文格式
+    '未开始': { zh: '未开始', en: 'Not Started' },
+    '等待接受': { zh: '等待接受', en: 'Pending Acceptance' },
+    '进行中': { zh: '进行中', en: 'In Progress' },
+    '测试中': { zh: '测试中', en: 'Testing' },
+    '已完成': { zh: '已完成', en: 'Completed' },
+    // 处理一些可能的变体
+    'not_started': { zh: '未开始', en: 'Not Started' },
+    'pending': { zh: '等待接受', en: 'Pending Acceptance' },
+    'in_progress': { zh: '进行中', en: 'In Progress' },
+    'testing': { zh: '测试中', en: 'Testing' },
+    'completed': { zh: '已完成', en: 'Completed' },
+  };
+  
+  return statusMapping[status]?.[lang] || status;
+};
+
+// 判断是否为等待接受状态
+const isPendingStatus = (status: string) => {
+  return status === 'PENDING' || status === 'pending' || status === '等待接受' || 
+         status === STATUS.PENDING || status === STATUS_LEGACY.PENDING;
+};
+
+// 判断是否为进行中状态
+const isInProgressStatus = (status: string) => {
+  return status === 'IN_PROGRESS' || status === 'in_progress' || status === '进行中' || 
+         status === STATUS.IN_PROGRESS || status === STATUS_LEGACY.IN_PROGRESS;
+};
+
+// 判断是否为测试中状态
+const isTestingStatus = (status: string) => {
+  return status === 'TESTING' || status === 'testing' || status === '测试中' || 
+         status === STATUS.TESTING || status === STATUS_LEGACY.TESTING;
+};
+
+// 判断是否为已完成状态
+const isCompletedStatus = (status: string) => {
+  return status === 'COMPLETED' || status === 'completed' || status === '已完成' || 
+         status === STATUS.COMPLETED || status === STATUS_LEGACY.COMPLETED;
 };
 
 export default function ClientView() {
@@ -257,6 +289,7 @@ export default function ClientView() {
   console.log('memberId:', memberId, 'assignedMemberIds:', tasks.map(t => t.assignedMemberId));
   const myTasks = tasks.filter(t => String(t.assignedMemberId).trim() === String(memberId).trim());
   console.log('myTasks:', myTasks);
+  console.log('myTasks详细信息:', myTasks.map(t => ({ id: t.id, status: t.status, type: typeof t.status })));
 
   return (
     <div style={{ position: 'relative', minHeight: '100vh', width: '100vw', height: '100vh', overflow: 'auto', backgroundImage: 'url(/bg-client.jpg)', backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }}>
@@ -327,25 +360,33 @@ export default function ClientView() {
           {myTasks.map((task, idx) => (
             <div key={idx} style={{ background: '#fff', borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', padding: 24 }}>
               <div style={{ fontWeight: 600, fontSize: 18, marginBottom: 8 }}>{lang === 'zh' ? (task.title_zh || task.title || '') : (task.title_en || task.title || '')}</div>
-              <div style={{ marginBottom: 12, color: '#1890ff', fontWeight: 500 }}>{t.currentStatus}{statusMap[lang][task.status as keyof typeof statusMap.zh] || task.status}</div>
+              <div style={{ marginBottom: 12, color: '#1890ff', fontWeight: 500 }}>
+                {t.currentStatus}{getStatusDisplay(task.status, lang)}
+                <span style={{fontSize: 12, color: '#888', marginLeft: 8}}>
+                  (原始值: {task.status})
+                </span>
+              </div>
               <ProgressBar status={task.status} lang={lang} />
               <button className="btn mt-4" style={{ background: '#22c55e', color: '#fff', marginRight: 12 }} onClick={() => router.push(`/chat?orderId=${task.orderId || ''}&taskId=${task.id}&role=developer`)}>{t.chat}</button>
-              {task.status === STATUS.PENDING && (
+              <div style={{fontSize: 12, color: '#666', marginTop: 8}}>
+                调试: 状态="{task.status}" → 显示="{getStatusDisplay(task.status, lang)}" | 等待接受={isPendingStatus(task.status)}
+              </div>
+              {isPendingStatus(task.status) && (
                 <button className="btn mt-4" onClick={() => handleAccept(task.id)}>{t.accept}</button>
               )}
-              {task.status === STATUS.IN_PROGRESS && (
+              {isInProgressStatus(task.status) && (
                 <div style={{ display: 'flex', gap: 12 }}>
                   <button className="btn mt-4" style={{ background: '#e11d48', color: '#fff' }} onClick={() => handleRevoke(task.id)}>{t.revoke}</button>
                   <button className="btn mt-4" style={{ background: '#1890ff', color: '#fff' }} onClick={() => handleFinishDev(task.id)}>{t.finishDev}</button>
                 </div>
               )}
-              {task.status === STATUS.TESTING && (
+              {isTestingStatus(task.status) && (
                 <div style={{ display: 'flex', gap: 12 }}>
                   <button className="btn mt-4" style={{ background: '#e11d48', color: '#fff' }} onClick={() => handleRevokeTest(task.id)}>{t.revokeTest}</button>
                   <button className="btn mt-4" style={{ background: '#1890ff', color: '#fff' }} onClick={() => handleFinishTest(task.id)}>{t.finishTest}</button>
                 </div>
               )}
-              {task.status === STATUS.COMPLETED && (
+              {isCompletedStatus(task.status) && (
                 <button className="btn mt-4" style={{ background: '#e11d48', color: '#fff' }} onClick={() => handleRevokeDone(task.id)}>{t.revokeDone}</button>
               )}
             </div>

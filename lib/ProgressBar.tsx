@@ -1,26 +1,45 @@
 import React from 'react';
 import { STATUS } from '../pages/task-planner';
 
+// 状态顺序和映射
+const STATUS_ORDER = ['NOT_STARTED', 'PENDING', 'IN_PROGRESS', 'TESTING', 'COMPLETED'];
+const STATUS_LEGACY_MAP = {
+  '未开始': 'NOT_STARTED',
+  '等待接受': 'PENDING', 
+  '进行中': 'IN_PROGRESS',
+  '测试中': 'TESTING',
+  '已完成': 'COMPLETED'
+};
+
 const statusStepsMap = {
   zh: [
-    { key: STATUS.NOT_STARTED, label: '未开始' },
-    { key: STATUS.PENDING, label: '等待接受' },
-    { key: STATUS.IN_PROGRESS, label: '进行中' },
-    { key: STATUS.TESTING, label: '测试中' },
-    { key: STATUS.COMPLETED, label: '已完成' },
+    { key: 'NOT_STARTED', label: '未开始' },
+    { key: 'PENDING', label: '等待接受' },
+    { key: 'IN_PROGRESS', label: '进行中' },
+    { key: 'TESTING', label: '测试中' },
+    { key: 'COMPLETED', label: '已完成' },
   ],
   en: [
-    { key: STATUS.NOT_STARTED, label: 'Not Started' },
-    { key: STATUS.PENDING, label: 'Pending Acceptance' },
-    { key: STATUS.IN_PROGRESS, label: 'In Progress' },
-    { key: STATUS.TESTING, label: 'Testing' },
-    { key: STATUS.COMPLETED, label: 'Completed' },
+    { key: 'NOT_STARTED', label: 'Not Started' },
+    { key: 'PENDING', label: 'Pending Acceptance' },
+    { key: 'IN_PROGRESS', label: 'In Progress' },
+    { key: 'TESTING', label: 'Testing' },
+    { key: 'COMPLETED', label: 'Completed' },
   ]
 };
 
 export function ProgressBar({ status, lang = 'zh' }: { status: string, lang?: 'zh' | 'en' }) {
   const statusSteps = statusStepsMap[lang] || statusStepsMap.zh;
-  const currentIdx = statusSteps.findIndex(s => s.key === status);
+  
+  // 标准化状态：将各种格式的状态转换为统一的英文格式
+  let normalizedStatus = status;
+  if (STATUS_LEGACY_MAP[status]) {
+    normalizedStatus = STATUS_LEGACY_MAP[status];
+  } else if (status && typeof status === 'string' && STATUS_ORDER.includes(status.toUpperCase())) {
+    normalizedStatus = status.toUpperCase();
+  }
+  
+  const currentIdx = statusSteps.findIndex(s => s.key === normalizedStatus);
   
   return (
     <div style={{

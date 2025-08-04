@@ -156,16 +156,42 @@ export const taskService = {
 export const chatService = {
   // 发送消息
   async sendMessage(orderId: string, taskId: string, role: string, message: string) {
-    const { error } = await supabase
-      .from('chat_messages')
-      .insert({
+    console.log('chatService.sendMessage 参数:', { orderId, taskId, role, message });
+    
+    try {
+      // 注意：不要传入 id 字段，让数据库自动生成
+      const insertData = {
         order_id: orderId,
         task_id: taskId,
         role,
         message
-      });
-    
-    if (error) throw error;
+      };
+      
+      console.log('准备插入的数据:', insertData);
+      
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .insert(insertData);
+      
+      console.log('Supabase 插入结果:', { data, error });
+      
+      if (error) {
+        console.error('Supabase 插入错误:', error);
+        console.error('错误详情:', {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint
+        });
+        throw error;
+      }
+      
+      console.log('✅ 消息插入成功');
+      return data;
+    } catch (err) {
+      console.error('❌ sendMessage 捕获错误:', err);
+      throw err;
+    }
   },
 
   // 获取聊天消息
