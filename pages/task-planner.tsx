@@ -401,13 +401,28 @@ export default function TaskPlanner() {
           '前端工程师', '后端工程师', 'UI设计师', 'UX设计师', '测试工程师', '数据库工程师',
           '产品经理', 'DevOps工程师', '全栈工程师'
         ];
-        const mappedRole = mainstreamRoles.includes(task.role) ? (roleMap[task.role] || task.role) : '杂项专员';
-        const matchResults = smartMatchDevelopersForTask(
+        // 先尝试角色映射，再检查是否在主流角色中，最后才用杂项专员
+        let mappedRole = roleMap[task.role] || task.role;
+        if (!mainstreamRoles.includes(mappedRole)) {
+          mappedRole = '杂项专员';
+        }
+        let matchResults = smartMatchDevelopersForTask(
           { ...task, role: mappedRole },
           teamMembers,
           assignedTasks,
           currentAssignMode
         ).filter(r => r.canAssign);
+        
+        // 如果没有足够工时的成员，则选择所有推荐成员中的最佳选择
+        if (matchResults.length === 0) {
+          console.log(`任务 ${idx} 没有找到有足够工时的 ${mappedRole}，选择最佳可用成员`);
+          matchResults = smartMatchDevelopersForTask(
+            { ...task, role: mappedRole },
+            teamMembers,
+            assignedTasks,
+            currentAssignMode
+          );
+        }
         
         // 计算每个候选成员的总工作量（包括已分配的任务）
         const candidatesWithWorkload = matchResults.map(r => {
@@ -430,6 +445,23 @@ export default function TaskPlanner() {
         if (best) {
           autoSelected[idx] = best.member.id;
           memberWorkloads[best.member.id] = (memberWorkloads[best.member.id] || 0) + best.effectiveHours;
+        } else {
+          // 如果没有找到合适的成员，尝试使用全栈工程师作为后备
+          console.log(`任务 ${idx} 没有找到合适的 ${mappedRole}，尝试使用全栈工程师`);
+          const fallbackResults = smartMatchDevelopersForTask(
+            { ...task, role: '全栈工程师' },
+            teamMembers,
+            assignedTasks,
+            currentAssignMode
+          ).filter(r => r.canAssign);
+          
+          if (fallbackResults.length > 0) {
+            const fallbackBest = fallbackResults[0];
+            autoSelected[idx] = fallbackBest.member.id;
+            const effectiveHours = Math.ceil(task.estimated_hours / fallbackBest.member.speed_factor);
+            memberWorkloads[fallbackBest.member.id] = (memberWorkloads[fallbackBest.member.id] || 0) + effectiveHours;
+            console.log(`✅ 为任务 ${idx} 分配了全栈工程师: ${fallbackBest.member.name}`);
+          }
         }
       });
     } else if (currentAssignMode === 'balanced') {
@@ -439,13 +471,29 @@ export default function TaskPlanner() {
           '前端工程师', '后端工程师', 'UI设计师', 'UX设计师', '测试工程师', '数据库工程师',
           '产品经理', 'DevOps工程师', '全栈工程师'
         ];
-        const mappedRole = mainstreamRoles.includes(task.role) ? (roleMap[task.role] || task.role) : '杂项专员';
-        const matchResults = smartMatchDevelopersForTask(
+        // 先尝试角色映射，再检查是否在主流角色中，最后才用杂项专员
+        let mappedRole = roleMap[task.role] || task.role;
+        if (!mainstreamRoles.includes(mappedRole)) {
+          mappedRole = '杂项专员';
+        }
+        let matchResults = smartMatchDevelopersForTask(
           { ...task, role: mappedRole },
           teamMembers,
           assignedTasks,
           currentAssignMode
         ).filter(r => r.canAssign);
+        
+        // 如果没有足够工时的成员，则选择所有推荐成员中的最佳选择
+        if (matchResults.length === 0) {
+          console.log(`任务 ${i} 没有找到有足够工时的 ${mappedRole}，选择最佳可用成员`);
+          matchResults = smartMatchDevelopersForTask(
+            { ...task, role: mappedRole },
+            teamMembers,
+            assignedTasks,
+            currentAssignMode
+          );
+        }
+        
         // 计算中位数
         const rates = matchResults.map(r => r.member.hourly_rate).sort((a, b) => a - b);
         const speeds = matchResults.map(r => r.member.speed_factor).sort((a, b) => a - b);
@@ -464,6 +512,20 @@ export default function TaskPlanner() {
         });
         if (best) {
           autoSelected[i] = best;
+        } else {
+          // 如果没有找到合适的成员，尝试使用全栈工程师作为后备
+          console.log(`任务 ${i} 没有找到合适的 ${mappedRole}，尝试使用全栈工程师`);
+          const fallbackResults = smartMatchDevelopersForTask(
+            { ...task, role: '全栈工程师' },
+            teamMembers,
+            assignedTasks,
+            currentAssignMode
+          ).filter(r => r.canAssign);
+          
+          if (fallbackResults.length > 0) {
+            autoSelected[i] = fallbackResults[0].member.id;
+            console.log(`✅ 为任务 ${i} 分配了全栈工程师: ${fallbackResults[0].member.name}`);
+          }
         }
       });
     } else {
@@ -473,18 +535,50 @@ export default function TaskPlanner() {
           '前端工程师', '后端工程师', 'UI设计师', 'UX设计师', '测试工程师', '数据库工程师',
           '产品经理', 'DevOps工程师', '全栈工程师'
         ];
-        const mappedRole = mainstreamRoles.includes(task.role) ? (roleMap[task.role] || task.role) : '杂项专员';
-        const matchResults = smartMatchDevelopersForTask(
+        // 先尝试角色映射，再检查是否在主流角色中，最后才用杂项专员
+        let mappedRole = roleMap[task.role] || task.role;
+        if (!mainstreamRoles.includes(mappedRole)) {
+          mappedRole = '杂项专员';
+        }
+        let matchResults = smartMatchDevelopersForTask(
           { ...task, role: mappedRole },
           teamMembers,
           assignedTasks,
           currentAssignMode
         ).filter(r => r.canAssign);
         
+        // 如果没有足够工时的成员，则选择所有推荐成员中的最佳选择
+        if (matchResults.length === 0) {
+          console.log(`任务 ${i} 没有找到有足够工时的 ${mappedRole}，选择最佳可用成员`);
+          matchResults = smartMatchDevelopersForTask(
+            { ...task, role: mappedRole },
+            teamMembers,
+            assignedTasks,
+            currentAssignMode
+          );
+        }
+        
         // 按价格排序，选择最便宜的
         matchResults.sort((a, b) => a.member.hourly_rate - b.member.hourly_rate);
         const cheapest = matchResults[0];
-        if (cheapest) autoSelected[i] = cheapest.member.id;
+        if (cheapest) {
+          autoSelected[i] = cheapest.member.id;
+        } else {
+          // 如果没有找到合适的成员，尝试使用全栈工程师作为后备
+          console.log(`任务 ${i} 没有找到合适的 ${mappedRole}，尝试使用全栈工程师`);
+          const fallbackResults = smartMatchDevelopersForTask(
+            { ...task, role: '全栈工程师' },
+            teamMembers,
+            assignedTasks,
+            currentAssignMode
+          ).filter(r => r.canAssign);
+          
+          if (fallbackResults.length > 0) {
+            fallbackResults.sort((a, b) => a.member.hourly_rate - b.member.hourly_rate);
+            autoSelected[i] = fallbackResults[0].member.id;
+            console.log(`✅ 为任务 ${i} 分配了全栈工程师: ${fallbackResults[0].member.name}`);
+          }
+        }
       });
     }
     
@@ -1554,20 +1648,42 @@ export default function TaskPlanner() {
                     // === 完整的任务分配流程 ===
                     console.log('开始完整的任务分配流程...');
                     
-                    // 1. 读取当前数据
-                    const savedTasks = JSON.parse(getLocalStorage('tasks') || '[]');
-                    const savedOrders = JSON.parse(getLocalStorage('orders') || '[]');
+                    // 1. 获取当前订单的任务数据（优先从数据库获取）
+                    let currentTasks = tasks; // 使用组件状态中的任务数据
+                    let currentOrderId = dbOrderId || orderId;
+                    
+                    // 如果组件状态中没有任务数据，尝试从数据库获取
+                    if (currentTasks.length === 0 && currentOrderId) {
+                      try {
+                        console.log('从数据库获取订单任务数据...');
+                        const res = await fetch(`/api/orders?orderId=${currentOrderId}`);
+                        const data = await res.json();
+                        if (data.tasks && data.tasks.length > 0) {
+                          currentTasks = data.tasks.map((task: any) => ({
+                            ...task,
+                            title: task.title_zh || task.title || '',
+                            role: task.role_zh || task.role || '',
+                            status: task.status || STATUS.NOT_STARTED,
+                            id: task.id
+                          }));
+                          console.log('从数据库获取到任务数据:', currentTasks.length);
+                        }
+                      } catch (error) {
+                        console.error('从数据库获取任务数据失败:', error);
+                      }
+                    }
+                    
                     // 直接使用组件状态中的 teamData，确保数据一致性
                     const currentTeamMembers = teamData;
                     
                     console.log('当前数据状态:');
-                    console.log('- 任务数量:', savedTasks.length);
-                    console.log('- 订单数量:', savedOrders.length);
+                    console.log('- 任务数量:', currentTasks.length);
+                    console.log('- 订单ID:', currentOrderId);
                     console.log('- 成员数量 (来自组件状态):', currentTeamMembers.length);
                     console.log('- 成员数据示例 (来自组件状态):', currentTeamMembers.slice(0, 5).map(m => ({ id: m.id, name: m.name })));
                     
                     // 2. 验证数据完整性
-                    if (savedTasks.length === 0) {
+                    if (currentTasks.length === 0) {
                       setModalMsg('没有找到任务数据，请重新进行任务分解');
                       setModalOpen(true);
                       return;
@@ -1579,73 +1695,48 @@ export default function TaskPlanner() {
                       return;
                     }
                     
-                    // 3. 更新任务分配
-                    let assignedCount = 0;
-                    assignments.forEach(({ taskId, memberId }) => {
-                      const taskIndex = savedTasks.findIndex((t: any) => t.id === taskId);
-                      const member = currentTeamMembers.find((m: any) => String(m.id) === String(memberId));
+                    // 3. 批量更新任务分配到数据库
+                    console.log('批量分配任务到数据库...');
+                    try {
+                      const response = await fetch('/api/assign-tasks', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                          assignments,
+                          orderId: currentOrderId 
+                        })
+                      });
                       
-                      console.log(`分配任务 ${taskId} 给成员 ${memberId}:`);
-                      console.log('- 任务索引:', taskIndex);
-                      console.log('- 找到成员:', member ? member.name : '未找到');
-                      
-                      if (taskIndex !== -1 && member) {
-                        const originalTask = savedTasks[taskIndex];
-                        
-                        // 调试任务名称问题
-                        console.log(`原始任务数据 (ID: ${originalTask.id}):`, { 
-                          title: originalTask.title, 
-                          title_zh: originalTask.title_zh,
-                          name_zh: originalTask.name_zh,
-                          name: originalTask.name
-                        });
-                        
-                        savedTasks[taskIndex] = {
-                          ...originalTask,
-                          assigned_member_id: memberId,
-                          status: 'PENDING', // 等待接受
-                          assigned_at: new Date().toISOString(),
-                          assigned_member_name: member.name
-                        };
-                        assignedCount++;
-                        console.log(`✅ 任务 "${originalTask.name_zh || originalTask.title_zh || originalTask.title}" 分配给 ${member.name} (ID: ${memberId})`);
-                        console.log(`✅ 更新后任务数据:`, savedTasks[taskIndex]);
-                      } else {
-                        console.log(`❌ 分配失败 - 任务ID: ${taskId}, 成员ID: ${memberId}`);
-                        console.log(`❌ 任务索引: ${taskIndex}, 成员: ${member ? '找到' : '未找到'}`);
+                      if (!response.ok) {
+                        throw new Error(`分配任务失败: ${response.status} ${response.statusText}`);
                       }
-                    });
-                    
-                    console.log(`任务分配完成: ${assignedCount}/${assignments.length}`);
-                    
-                    // 4. 更新订单状态
-                    const orderIndex = savedOrders.findIndex((o: any) => o.id === dbOrderId);
-                    if (orderIndex !== -1) {
-                      savedOrders[orderIndex] = {
-                        ...savedOrders[orderIndex],
-                        status: '进行中',
-                        assigned_at: new Date().toISOString(),
-                        total_assigned_tasks: assignedCount
-                      };
-                      console.log(`✅ 订单 ${dbOrderId} 状态更新为"进行中"`);
-                    } else {
-                      console.log(`❌ 未找到订单 ${dbOrderId}`);
+                      
+                      const result = await response.json();
+                      console.log('批量分配结果:', result);
+                      
+                      // 输出分配详情
+                      assignments.forEach(({ taskId, memberId }) => {
+                        const task = currentTasks.find((t: any) => t.id === taskId);
+                        const member = currentTeamMembers.find((m: any) => String(m.id) === String(memberId));
+                        if (task && member) {
+                          console.log(`✅ 任务 "${task.title_zh || task.title}" 分配给 ${member.name} (ID: ${memberId})`);
+                        }
+                      });
+                      
+                    } catch (error) {
+                      console.error('批量分配任务失败:', error);
+                      setModalMsg(`分配失败: ${String(error)}`);
+                      setModalOpen(true);
+                      return;
                     }
                     
-                    // 5. 保存所有数据
-                    setLocalStorage('tasks', JSON.stringify(savedTasks));
-                    setLocalStorage('orders', JSON.stringify(savedOrders));
-                    
-                    // 6. 验证保存结果
-                    const verifyTasks = JSON.parse(getLocalStorage('tasks') || '[]');
-                    const assignedTasks = verifyTasks.filter((t: any) => t.assigned_member_id);
-                    console.log(`✅ 验证结果: ${assignedTasks.length} 个任务已分配成员`);
+                    console.log(`任务分配完成: ${assignments.length} 个任务`);
                     
                     // 跳转到结果页面
                     router.push({
                       pathname: '/result',
                       query: {
-                        orderId: dbOrderId
+                        orderId: currentOrderId
                       }
                     });
                   } catch (error) {
@@ -1883,7 +1974,10 @@ export default function TaskPlanner() {
                               const res = await fetch(`/api/orders?orderId=${order.id}`);
                               const data = await res.json();
                               const status = data.order?.status;
-                              if (status === '未开始' || status === 'Not Started') {
+                              const tasks = data.tasks || [];
+                              // 判断所有任务都还未分配成员
+                              const allUnassigned = tasks.length > 0 && tasks.every(task => !task.assigned_member_id);
+                              if (status === '未开始' || status === 'Not Started' || allUnassigned) {
                                 router.push({ pathname: '/task-planner', query: { orderId: order.id } });
                               } else {
                                 router.push({ pathname: '/result', query: { orderId: order.id } });
