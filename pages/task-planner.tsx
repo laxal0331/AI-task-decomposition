@@ -408,7 +408,7 @@ export default function TaskPlanner() {
           } else {
             console.log('没有现有分配，执行自动分配...');
             
-            // 🔧 使用统一的同步自动选择函数
+            // 🔧 使用第一次拆解任务的自动分配逻辑
             const autoSelected = executeImmediateAutoSelection(
               normalizedTasks, 
               data.members, 
@@ -417,6 +417,8 @@ export default function TaskPlanner() {
             );
             
             setSelectedMembers(autoSelected);
+            setShowAutoSelectButton(false); // 从数据库加载时不显示按钮
+
             console.log('📊 数据库订单数据加载完成', {
               tasksCount: normalizedTasks.length,
               membersCount: data.members?.length || 0,
@@ -1046,7 +1048,7 @@ export default function TaskPlanner() {
       if (data.members) {
         setTeamData(data.members);
         
-        // 🔧 第一次拆解任务时不自动选择，显示按钮让用户手动触发
+                // 🔧 第一次拆解任务时不自动选择，显示按钮让用户手动触发
         if (isFirstDecomposition) {
           console.log('🚀 第一次拆解任务，不自动选择，显示自动选择按钮');
           setShowAutoSelectButton(true);
@@ -1061,7 +1063,7 @@ export default function TaskPlanner() {
             'API任务分解'
           );
           setSelectedMembers(autoSelected);
-          setShowAutoSelectButton(false); // 非第一次拆解时不显示按钮
+
           console.log('🚀 API任务分解和即时自动选择完成', {
             tasksCount: normalizedTasks.length,
             membersCount: data.members?.length || 0,
@@ -1428,7 +1430,7 @@ export default function TaskPlanner() {
             setAssignedTasks({});
           if (data.members) {
             setTeamData(data.members);
-                    // 🔧 从订单加载时立即执行同步自动分配（保持原来的逻辑）
+                    // 🔧 从订单加载时使用第一次拆解任务的自动分配逻辑
         if (data.tasks && data.tasks.length > 0) {
           const normalizedTasks = data.tasks.map(normalizeTaskStatus);
           const autoSelected = executeImmediateAutoSelection(
@@ -1445,7 +1447,7 @@ export default function TaskPlanner() {
             const membersData = await membersRes.json();
             if (membersData.members) {
               setTeamData(membersData.members);
-              // 🔧 从订单加载时立即执行同步自动分配（保持原来的逻辑）
+              // 🔧 从订单加载时使用第一次拆解任务的自动分配逻辑
               if (data.tasks && data.tasks.length > 0) {
                 const normalizedTasks = data.tasks.map(normalizeTaskStatus);
                 const autoSelected = executeImmediateAutoSelection(
@@ -1466,7 +1468,7 @@ export default function TaskPlanner() {
           const membersData = await membersRes.json();
           if (membersData.members) {
             setTeamData(membersData.members);
-            // 🔧 从localStorage加载时立即执行同步自动分配（保持原来的逻辑）
+            // 🔧 从localStorage加载时使用第一次拆解任务的自动分配逻辑
             const normalizedTasks = targetTasks.map(normalizeTaskStatus);
             const autoSelected = executeImmediateAutoSelection(
               normalizedTasks, 

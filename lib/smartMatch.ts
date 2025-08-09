@@ -1,4 +1,4 @@
-import { TeamMember } from './teamData';
+import { TeamMember, roleMap } from './teamData';
 
 export type SmartMatchResult = {
   member: TeamMember;
@@ -35,9 +35,10 @@ export function globalFastestAssignment(
   const result: { [taskIdx: number]: SmartMatchResult[] } = {};
   for (const task of taskOrder) {
     // 过滤有该角色的成员（放宽匹配条件）
+    const taskRole = roleMap[task.role] || task.role; // 使用角色映射
     const candidates = allMembers.filter(m => {
       // 1. 精确匹配
-      if (m.roles.includes(task.role)) return true;
+      if (m.roles.includes(taskRole)) return true;
       
       // 2. 全栈工程师可以匹配任何角色
       if (m.roles.includes('全栈工程师')) return true;
@@ -52,11 +53,12 @@ export function globalFastestAssignment(
         'DevOps工程师': ['后端工程师', '数据库工程师'],
         '测试工程师': ['前端工程师', '后端工程师', '全栈工程师'],
         '产品经理': ['UX设计师', 'UI设计师'],
-        '杂项专员': [] // 杂项专员只能精确匹配或全栈
+        '杂项专员': [], // 杂项专员只能精确匹配或全栈
+        '项目经理': ['产品经理', 'UX设计师', 'UI设计师']
       };
       
       // 检查是否有兼容角色
-      const compatibleRoles = roleCompatibility[task.role] || [];
+      const compatibleRoles = roleCompatibility[taskRole] || [];
       return m.roles.some(role => compatibleRoles.includes(role));
     });
     const match: SmartMatchResult[] = candidates.map(member => {
@@ -86,8 +88,8 @@ export function globalFastestAssignment(
             if ((aAssigned === 0 && bAssigned > 0) || (aAssigned > 0 && bAssigned === 0)) {
               return aAssigned - bAssigned;
             }
-            if (b.member.speed_factor !== a.member.speed_factor) return b.member.speed_factor - a.member.speed_factor;
-            return a.member.hourly_rate - b.member.hourly_rate;
+            // 最快模式：只考虑速度，完全忽略价格
+            return b.member.speed_factor - a.member.speed_factor;
           });
         for (const m of sorted) {
           if (remainHours <= 0) break;
@@ -187,11 +189,18 @@ export function globalFastestAssignment(
         result[task.idx] = assignments;
       }
     } else {
-      // 不可拆分任务，保持原有分配逻辑
+      // 不可拆分任务，根据分配模式排序
       match.sort((a, b) => {
         if (a.nextAvailableWeek !== b.nextAvailableWeek) return a.nextAvailableWeek - b.nextAvailableWeek;
         if (b.member.speed_factor !== a.member.speed_factor) return b.member.speed_factor - a.member.speed_factor;
-        return b.member.hourly_rate - a.member.hourly_rate;
+        // 根据分配模式决定是否考虑价格
+        if (assignMode === 'fast') {
+          // 最快模式：完全忽略价格
+          return 0; // 如果速度相同，不考虑价格
+        } else {
+          // 其他模式：考虑价格
+          return b.member.hourly_rate - a.member.hourly_rate;
+        }
       });
       const best = match[0];
       if (best && best.canAssign && best.nextAvailableWeek >= 0) {
@@ -218,9 +227,10 @@ export function smartMatchDevelopersForTask(
   assignMode: 'fast' | 'balanced' | 'slow'
 ): SmartMatchResult[] {
   // 过滤有该角色的成员（放宽匹配条件）
+  const taskRole = roleMap[task.role] || task.role; // 使用角色映射
   const candidates = allMembers.filter(m => {
     // 1. 精确匹配
-    if (m.roles.includes(task.role)) return true;
+    if (m.roles.includes(taskRole)) return true;
     
     // 2. 全栈工程师可以匹配任何角色
     if (m.roles.includes('全栈工程师')) return true;
@@ -235,11 +245,12 @@ export function smartMatchDevelopersForTask(
       'DevOps工程师': ['后端工程师', '数据库工程师'],
       '测试工程师': ['前端工程师', '后端工程师', '全栈工程师'],
       '产品经理': ['UX设计师', 'UI设计师'],
-      '杂项专员': [] // 杂项专员只能精确匹配或全栈
+      '杂项专员': [], // 杂项专员只能精确匹配或全栈
+      '项目经理': ['产品经理', 'UX设计师', 'UI设计师']
     };
     
     // 检查是否有兼容角色
-    const compatibleRoles = roleCompatibility[task.role] || [];
+    const compatibleRoles = roleCompatibility[taskRole] || [];
     return m.roles.some(role => compatibleRoles.includes(role));
   });
   // 计算基准时薪
@@ -263,26 +274,25 @@ export function smartMatchDevelopersForTask(
   });
   // 按模式排序
   if (assignMode === 'fast') {
-    // 最快模式：优先速度倍率高的成员，但也要考虑可用工时
+    // 最快模式：只考虑速度，完全忽略价格
     results.sort((a, b) => {
       // 首先按角色匹配度排序（精确匹配 > 兼容角色）
-      const aExactMatch = a.member.roles.includes(task.role) ? 1 : 0;
-      const bExactMatch = b.member.roles.includes(task.role) ? 1 : 0;
+      const aExactMatch = a.member.roles.includes(taskRole) ? 1 : 0;
+      const bExactMatch = b.member.roles.includes(taskRole) ? 1 : 0;
       if (aExactMatch !== bExactMatch) return bExactMatch - aExactMatch;
       
-      // 然后按速度排序
+      // 然后按速度排序（最快模式的核心）
       if (b.member.speed_factor !== a.member.speed_factor) return b.member.speed_factor - a.member.speed_factor;
       // 然后按可用工时排序，确保有足够时间完成任务
       if (a.totalAvailable !== b.totalAvailable) return b.totalAvailable - a.totalAvailable;
-      // 最后按价格排序
-      return a.member.hourly_rate - b.member.hourly_rate;
+      // 最快模式：完全忽略价格，不再考虑价格因素
     });
   } else if (assignMode === 'balanced') {
     // 均衡：速度倍率和时薪都接近平均值
     results.sort((a, b) => {
       // 首先按角色匹配度排序（精确匹配 > 兼容角色）
-      const aExactMatch = a.member.roles.includes(task.role) ? 1 : 0;
-      const bExactMatch = b.member.roles.includes(task.role) ? 1 : 0;
+      const aExactMatch = a.member.roles.includes(taskRole) ? 1 : 0;
+      const bExactMatch = b.member.roles.includes(taskRole) ? 1 : 0;
       if (aExactMatch !== bExactMatch) return bExactMatch - aExactMatch;
       
       const aScore = Math.abs(a.member.speed_factor - baseSpeed) + Math.abs(a.member.hourly_rate - baseHourlyRate) / baseHourlyRate;
@@ -294,8 +304,8 @@ export function smartMatchDevelopersForTask(
     // 慢慢来：优先时薪低的成员，整体越便宜越好
     results.sort((a, b) => {
       // 首先按角色匹配度排序（精确匹配 > 兼容角色）
-      const aExactMatch = a.member.roles.includes(task.role) ? 1 : 0;
-      const bExactMatch = b.member.roles.includes(task.role) ? 1 : 0;
+      const aExactMatch = a.member.roles.includes(taskRole) ? 1 : 0;
+      const bExactMatch = b.member.roles.includes(taskRole) ? 1 : 0;
       if (aExactMatch !== bExactMatch) return bExactMatch - aExactMatch;
       
       if (a.member.hourly_rate !== b.member.hourly_rate) return a.member.hourly_rate - b.member.hourly_rate;

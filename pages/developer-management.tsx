@@ -37,6 +37,10 @@ const texts = {
     search: '搜索',
     clearSearch: '清除搜索',
     noResults: '没有找到匹配的开发者',
+    roleCategory: '职业类别',
+    allRoles: '全部职业',
+    clearFilters: '清除筛选',
+    clearAllFilters: '清除所有筛选',
   },
   en: {
     title: 'Developer Management',
@@ -73,7 +77,36 @@ const texts = {
     search: 'Search',
     clearSearch: 'Clear search',
     noResults: 'No matching developers found',
+    roleCategory: 'Role Category',
+    allRoles: 'All Roles',
+    clearFilters: 'Clear Filters',
+    clearAllFilters: 'Clear all filters',
   },
+};
+
+// 角色映射表 - 用于中英文角色名称的转换
+const roleMapping = {
+  '前端工程师': 'Frontend Engineer',
+  '后端工程师': 'Backend Engineer',
+  'UI设计师': 'UI Designer',
+  'UX设计师': 'UX Designer',
+  '测试工程师': 'Test Engineer',
+  '数据库工程师': 'Database Engineer',
+  '产品经理': 'Product Manager',
+  'DevOps工程师': 'DevOps Engineer',
+  '全栈工程师': 'Full Stack Engineer',
+  '杂项专员': 'General Specialist',
+  // 反向映射
+  'Frontend Engineer': '前端工程师',
+  'Backend Engineer': '后端工程师',
+  'UI Designer': 'UI设计师',
+  'UX Designer': 'UX设计师',
+  'Test Engineer': '测试工程师',
+  'Database Engineer': '数据库工程师',
+  'Product Manager': '产品经理',
+  'DevOps Engineer': 'DevOps工程师',
+  'Full Stack Engineer': '全栈工程师',
+  'General Specialist': '杂项专员'
 };
 
 const roles = {
@@ -110,6 +143,7 @@ export default function DeveloperManagement() {
   const [developers, setDevelopers] = useState<any[]>([]);
   const [filteredDevelopers, setFilteredDevelopers] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedRole, setSelectedRole] = useState<string>('');
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -147,12 +181,13 @@ export default function DeveloperManagement() {
     fetchDevelopers();
   }, []);
 
-  // 搜索逻辑
+  // 搜索和筛选逻辑
   useEffect(() => {
-    if (!searchTerm.trim()) {
-      setFilteredDevelopers(developers);
-    } else {
-      const filtered = developers.filter(developer => {
+    let filtered = developers;
+    
+    // 按搜索词筛选
+    if (searchTerm.trim()) {
+      filtered = filtered.filter(developer => {
         const searchLower = searchTerm.toLowerCase();
         return (
           developer.name?.toLowerCase().includes(searchLower) ||
@@ -163,9 +198,35 @@ export default function DeveloperManagement() {
           developer.speed_factor?.toString().includes(searchTerm)
         );
       });
-      setFilteredDevelopers(filtered);
     }
-  }, [searchTerm, developers]);
+    
+    // 按角色筛选
+    if (selectedRole) {
+      filtered = filtered.filter(developer => {
+        let developerRole = '';
+        if (Array.isArray(developer.roles)) {
+          developerRole = developer.roles[0] || '';
+        } else if (typeof developer.roles === 'string') {
+          try {
+            const parsedRoles = JSON.parse(developer.roles);
+            developerRole = Array.isArray(parsedRoles) ? parsedRoles[0] : developer.roles;
+          } catch (e) {
+            developerRole = developer.roles || '';
+          }
+        } else {
+          developerRole = developer.roles || '';
+        }
+        
+        // 使用角色映射进行匹配
+        // 如果选中的角色与开发者角色直接匹配，或者通过映射匹配，则返回true
+        return developerRole === selectedRole || 
+               roleMapping[developerRole] === selectedRole || 
+               roleMapping[selectedRole] === developerRole;
+      });
+    }
+    
+    setFilteredDevelopers(filtered);
+  }, [searchTerm, selectedRole, developers]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -406,88 +467,280 @@ export default function DeveloperManagement() {
       <div style={{ marginBottom: 32 }}>
         <h2 className="text-xl font-semibold mb-4" style={{ color: '#fff', textShadow: '0 1px 4px rgba(0,0,0,0.18)' }}>{t.developerList}</h2>
         
-        {/* 搜索框 */}
-        <div style={{ marginBottom: 16, color: '#fff', textShadow: '0 1px 4px rgba(0,0,0,0.18)' }}>
+                {/* 搜索和筛选区域 */}
+        <div style={{ 
+          marginBottom: 24, 
+          color: '#fff', 
+          textShadow: '0 1px 4px rgba(0,0,0,0.18)',
+          background: 'rgba(255, 255, 255, 0.1)',
+          borderRadius: 16,
+          padding: 24,
+          backdropFilter: 'blur(10px)',
+          border: '1px solid rgba(255, 255, 255, 0.2)'
+        }}>
           <div style={{ 
-            position: 'relative', 
-            maxWidth: 400,
             display: 'flex',
-            alignItems: 'center'
+            gap: 20,
+            alignItems: 'flex-end',
+            flexWrap: 'wrap'
           }}>
-            <input
-              type="text"
-              className="search-input"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder={lang === 'zh' ? '搜索开发者姓名、角色、技能...' : 'Search by name, role, skills...'}
-              style={{
-                width: '100%',
-                padding: '12px 16px 12px 44px',
-                borderRadius: 8,
-                border: '1px solid #e5e7eb',
-                fontSize: 14,
-                outline: 'none',
-                transition: 'border-color 0.2s',
-                color: '#222',
-                background: '#fff'
-              }}
-              onFocus={(e) => e.target.style.borderColor = '#1890ff'}
-              onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
-            />
-            <div style={{
-              position: 'absolute',
-              left: 16,
-              color: '#999',
-              fontSize: 16
+            {/* 搜索框 */}
+            <div style={{ 
+              position: 'relative', 
+              flex: 1,
+              minWidth: 320,
+              maxWidth: 450
             }}>
-              🔍
+              <label style={{ 
+                display: 'block', 
+                marginBottom: 8, 
+                fontSize: 14, 
+                fontWeight: 600,
+                color: '#fff',
+                letterSpacing: '0.5px'
+              }}>
+                {lang === 'zh' ? '🔍 搜索开发者' : '🔍 Search Developers'}
+              </label>
+              <div style={{
+                position: 'relative',
+                background: '#fff',
+                borderRadius: 12,
+                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                transition: 'all 0.3s ease'
+              }}>
+                <input
+                  type="text"
+                  className="search-input"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder={lang === 'zh' ? '输入姓名、角色、技能关键词...' : 'Enter name, role, skills...'}
+                                     style={{
+                     width: '100%',
+                     padding: '16px 20px 16px 48px',
+                     borderRadius: 12,
+                     border: 'none',
+                     fontSize: 15,
+                     outline: 'none',
+                     color: '#222',
+                     background: 'transparent',
+                     transition: 'all 0.3s ease'
+                   }}
+                  onFocus={(e) => {
+                    e.target.parentElement!.style.boxShadow = '0 6px 20px rgba(24, 144, 255, 0.3)';
+                    e.target.parentElement!.style.transform = 'translateY(-2px)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.parentElement!.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+                    e.target.parentElement!.style.transform = 'translateY(0)';
+                  }}
+                />
+                                 <div style={{
+                   position: 'absolute',
+                   left: 16,
+                   top: '50%',
+                   transform: 'translateY(-50%)',
+                   color: '#1890ff',
+                   fontSize: 16,
+                   display: 'flex',
+                   alignItems: 'center',
+                   justifyContent: 'center',
+                   width: 24,
+                   height: 24,
+                   pointerEvents: 'none'
+                 }}>
+                   🔍
+                 </div>
+                {searchTerm && (
+                  <button
+                    onClick={() => setSearchTerm('')}
+                    style={{
+                      position: 'absolute',
+                      right: 16,
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'rgba(24, 144, 255, 0.1)',
+                      border: 'none',
+                      color: '#1890ff',
+                      cursor: 'pointer',
+                      fontSize: 16,
+                      padding: 6,
+                      borderRadius: 6,
+                      transition: 'all 0.2s ease'
+                    }}
+                    onMouseOver={(e) => {
+                      e.currentTarget.style.background = 'rgba(24, 144, 255, 0.2)';
+                    }}
+                    onMouseOut={(e) => {
+                      e.currentTarget.style.background = 'rgba(24, 144, 255, 0.1)';
+                    }}
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
             </div>
-            {searchTerm && (
-              <button
-                onClick={() => setSearchTerm('')}
-                style={{
+
+            {/* 角色筛选器 */}
+            <div style={{ minWidth: 220 }}>
+              <label style={{ 
+                display: 'block', 
+                marginBottom: 8, 
+                fontSize: 14, 
+                fontWeight: 600,
+                color: '#fff',
+                letterSpacing: '0.5px'
+              }}>
+                {lang === 'zh' ? '🎯 职业类别' : '🎯 Role Category'}
+              </label>
+              <div style={{
+                position: 'relative',
+                background: '#fff',
+                borderRadius: 12,
+                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                transition: 'all 0.3s ease'
+              }}>
+                <select
+                  value={selectedRole}
+                  onChange={(e) => setSelectedRole(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '16px 20px',
+                    borderRadius: 12,
+                    border: 'none',
+                    fontSize: 15,
+                    outline: 'none',
+                    color: '#222',
+                    background: 'transparent',
+                    cursor: 'pointer',
+                    appearance: 'none',
+                    transition: 'all 0.3s ease'
+                  }}
+                  onFocus={(e) => {
+                    e.target.parentElement!.style.boxShadow = '0 6px 20px rgba(24, 144, 255, 0.3)';
+                    e.target.parentElement!.style.transform = 'translateY(-2px)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.parentElement!.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+                    e.target.parentElement!.style.transform = 'translateY(0)';
+                  }}
+                >
+                  <option value="">{t.allRoles}</option>
+                  {roles[lang].map((role) => (
+                    <option key={role} value={role}>{role}</option>
+                  ))}
+                </select>
+                <div style={{
                   position: 'absolute',
-                  right: 12,
-                  background: 'none',
-                  border: 'none',
-                  color: '#999',
-                  cursor: 'pointer',
+                  right: 16,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  color: '#1890ff',
                   fontSize: 16,
-                  padding: 4
-                }}
-              >
-                ✕
-              </button>
+                  pointerEvents: 'none'
+                }}>
+                  ▼
+                </div>
+              </div>
+            </div>
+
+            {/* 清除筛选按钮 */}
+            {(searchTerm || selectedRole) && (
+              <div style={{ minWidth: 120 }}>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: 8, 
+                  fontSize: 14, 
+                  fontWeight: 600,
+                  color: '#fff',
+                  letterSpacing: '0.5px'
+                }}>
+                  {lang === 'zh' ? '🔄 操作' : '🔄 Actions'}
+                </label>
+                <button
+                  onClick={() => {
+                    setSearchTerm('');
+                    setSelectedRole('');
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '16px 20px',
+                    borderRadius: 12,
+                    border: 'none',
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    color: '#fff',
+                    fontSize: 15,
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease',
+                    fontWeight: 600,
+                    boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)'
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 6px 20px rgba(102, 126, 234, 0.4)';
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.3)';
+                  }}
+                >
+                  {t.clearFilters}
+                </button>
+              </div>
             )}
           </div>
-          {searchTerm && (
+
+          {/* 筛选结果提示 */}
+          {(searchTerm || selectedRole) && (
             <div style={{ 
-              fontSize: 12, 
-              color: '#e0e7ef', 
-              marginTop: 8,
+              marginTop: 16,
+              padding: '12px 16px',
+              background: 'rgba(255, 255, 255, 0.1)',
+              borderRadius: 8,
+              border: '1px solid rgba(255, 255, 255, 0.2)',
               display: 'flex',
               alignItems: 'center',
-              gap: 8,
-              textShadow: '0 1px 4px rgba(0,0,0,0.18)'
+              justifyContent: 'space-between',
+              gap: 12
             }}>
-              <span>
-                {lang === 'zh' 
-                  ? `找到 ${filteredDevelopers.length} 个开发者` 
-                  : `Found ${filteredDevelopers.length} developers`
-                }
-              </span>
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 8,
+                fontSize: 14,
+                color: '#e0e7ef'
+              }}>
+                <span style={{ fontSize: 16 }}>📊</span>
+                <span>
+                  {lang === 'zh' 
+                    ? `找到 ${filteredDevelopers.length} 个开发者` 
+                    : `Found ${filteredDevelopers.length} developers`
+                  }
+                </span>
+              </div>
               <button
-                onClick={() => setSearchTerm('')}
+                onClick={() => {
+                  setSearchTerm('');
+                  setSelectedRole('');
+                }}
                 style={{
-                  background: 'none',
+                  background: 'rgba(255, 255, 255, 0.2)',
                   border: 'none',
-                  color: '#1890ff',
+                  color: '#fff',
                   cursor: 'pointer',
-                  fontSize: 12,
-                  textDecoration: 'underline'
+                  fontSize: 13,
+                  padding: '6px 12px',
+                  borderRadius: 6,
+                  transition: 'all 0.2s ease',
+                  fontWeight: 500
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
                 }}
               >
-                {t.clearSearch}
+                {t.clearAllFilters}
               </button>
             </div>
           )}
