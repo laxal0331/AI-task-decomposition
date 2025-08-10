@@ -1,0 +1,8 @@
+[
+  { "id": "m1", "name": "后端高手", "name_zh": "后端高手", "name_en": "BE Pro", "roles": ["后端工程师"], "skills": ["Node.js"], "available_hours": [40,40,40,40], "experience_score": 90, "hourly_rate": 140, "speed_factor": 1.4 },
+  { "id": "m2", "name": "全栈迅速", "name_zh": "全栈迅速", "name_en": "FS Fast", "roles": ["全栈工程师"], "skills": ["React","Node.js"], "available_hours": [40,40,40,40], "experience_score": 85, "hourly_rate": 130, "speed_factor": 1.6 },
+  { "id": "m3", "name": "前端资深", "name_zh": "前端资深", "name_en": "FE Senior", "roles": ["前端工程师"], "skills": ["React"], "available_hours": [20,20,20,20], "experience_score": 88, "hourly_rate": 120, "speed_factor": 1.1 },
+  { "id": "m4", "name": "便宜工", "name_zh": "便宜工", "name_en": "Cheap", "roles": ["后端工程师"], "skills": ["Node.js"], "available_hours": [40,40,40,40], "experience_score": 70, "hourly_rate": 90, "speed_factor": 0.9 }
+]
+
+

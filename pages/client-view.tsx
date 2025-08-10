@@ -369,7 +369,7 @@ export default function ClientView() {
               <ProgressBar status={task.status} lang={lang} />
               <button className="btn mt-4" style={{ background: '#22c55e', color: '#fff', marginRight: 12 }} onClick={() => router.push(`/chat?orderId=${task.orderId || ''}&taskId=${task.id}&role=developer`)}>{t.chat}</button>
               <div style={{fontSize: 12, color: '#666', marginTop: 8}}>
-                调试: 状态="{task.status}" → 显示="{getStatusDisplay(task.status, lang)}" | 等待接受={isPendingStatus(task.status)}
+                调试: 状态=&quot;{task.status}&quot; → 显示=&quot;{getStatusDisplay(task.status, lang)}&quot; | 等待接受={isPendingStatus(task.status)}
               </div>
               {isPendingStatus(task.status) && (
                 <button className="btn mt-4" onClick={() => handleAccept(task.id)}>{t.accept}</button>

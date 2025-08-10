@@ -422,11 +422,11 @@ export default function TaskPlanner() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
           />
-          <button
-            onClick={handleSubmit}
-            className="btn"
-            disabled={loading || !input}
-          >
+            <button
+              onClick={handleSubmit}
+              className="btn"
+              disabled={loading || !input}
+            >
             {loading ? t.submitting : t.submit}
           </button>
         </div>
@@ -504,7 +504,7 @@ export default function TaskPlanner() {
               </button>
               <button
                 className="btn"
-                style={{ background: '#f1f5f9', color: '#222' }}
+                data-variant="secondary"
                 onClick={() => {
                   // 清除所有状态，重新开始
                   setTasks([]);

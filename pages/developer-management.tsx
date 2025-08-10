@@ -402,7 +402,7 @@ export default function DeveloperManagement() {
         
         <button
           className="btn"
-          style={{ background: '#1890ff', color: '#fff', borderRadius: 8, fontWeight: 600, padding: '8px 16px' }}
+          style={{ fontWeight: 600, padding: '8px 16px' }}
           onClick={() => {
             setShowForm(true);
             setEditingId(null);
@@ -906,14 +906,15 @@ export default function DeveloperManagement() {
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button
                       className="btn"
-                      style={{ background: '#1890ff', color: '#fff', borderRadius: 6, padding: '4px 12px', fontSize: 14 }}
+                      style={{ borderRadius: 6, padding: '4px 12px', fontSize: 14 }}
                       onClick={() => handleEdit(developer)}
                     >
                       {t.edit}
                     </button>
                     <button
                       className="btn"
-                      style={{ background: '#e11d48', color: '#fff', borderRadius: 6, padding: '4px 12px', fontSize: 14 }}
+                      data-variant="danger"
+                      style={{ borderRadius: 6, padding: '4px 12px', fontSize: 14 }}
                       onClick={() => setDeleteId(developer.id)}
                     >
                       {t.delete}
@@ -1077,7 +1078,7 @@ export default function DeveloperManagement() {
                 <button
                   type="submit"
                   className="btn"
-                  style={{ flex: 1, background: '#1890ff', color: '#fff', borderRadius: 8, padding: '12px', fontWeight: 600 }}
+                  style={{ flex: 1, borderRadius: 8, padding: '12px', fontWeight: 600 }}
                   disabled={loading}
                 >
                   {loading ? t.loading : (editingId ? t.update : t.submit)}
@@ -1085,7 +1086,8 @@ export default function DeveloperManagement() {
                 <button
                   type="button"
                   className="btn"
-                  style={{ flex: 1, background: '#f1f5f9', color: '#222', borderRadius: 8, padding: '12px', fontWeight: 600 }}
+                  data-variant="secondary"
+                  style={{ flex: 1, borderRadius: 8, padding: '12px', fontWeight: 600 }}
                   onClick={() => {
                     setShowForm(false);
                     setEditingId(null);

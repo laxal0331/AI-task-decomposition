@@ -148,7 +148,7 @@ export default function TaskItem({ i, task, lang, t, teamData, assignMode, roleM
 
       <div className="mt-2 flex gap-2">
         <button className="btn" onClick={() => onToggle('more')}>{t.more}</button>
-        <button className="btn" style={{ background: '#e11d48' }} onClick={() => onToggle('insufficient')}>{t.insufficient}</button>
+        <button className="btn" data-variant="danger" onClick={() => onToggle('insufficient')}>{t.insufficient}</button>
       </div>
       {expanded === 'more' && (
         <div className="p-2 border rounded bg-gray-50 mt-2">

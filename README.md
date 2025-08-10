@@ -48,18 +48,28 @@ AI Remote Project Management Platform
 
 ---
 
-## 测试说明 Testing
+## 测试与 CI/监控 Testing, CI & Monitoring
 
-- 项目根目录下有若干 Node.js 测试脚本（如 `test-api-response.js`、`test-assignment.js` 等），用于验证 API 和核心业务逻辑。
-- 运行方式 How to run:
+### 单元测试 Vitest
+- 位置：`tests/unit/*`
+- 覆盖：
+  - 分配算法 `lib/services/assignment.ts`
+  - 角色归一 `lib/services/orderLoaders.ts`
+- 运行：
   ```bash
-  node test-api-response.js
-  node test-assignment.js
-  # 依此类推 / and so on
+  npm run test        # 带覆盖率的一次性运行
+  npm run test:unit   # watch/本地开发
   ```
-- 这些脚本主要用于开发阶段的功能验证，非自动化测试框架（如 Jest）脚本。
-- There are several Node.js test scripts in the project root (e.g., `test-api-response.js`, `test-assignment.js`, etc.) for API and core logic validation.
-- These scripts are for development-time validation, not formal automated test frameworks (like Jest).
+
+### CI（GitHub Actions）
+- 工作流：`.github/workflows/ci.yml`
+- 步骤：`lint → build → test`
+- 使用：推送到 `main` 或 PR 会自动触发。可在仓库设置里开启 Required status checks 强制通过后才可合并。
+
+### 监控（Sentry 可选）
+- 封装：`lib/monitoring/sentry.ts`
+- 前端初始化：`pages/_app.tsx` 自动调用
+- 启用方式：在 Vercel 环境变量中设置 `NEXT_PUBLIC_SENTRY_DSN`（可选再加服务端 `SENTRY_DSN`）。
 
 ---
 
@@ -82,6 +92,7 @@ Please copy `.env.example` to `.env.local` in the project root, and fill in your
 - `SUPABASE_URL` - Supabase 项目 URL
 - `SUPABASE_ANON_KEY` - Supabase 匿名密钥
 - `DEEPSEEK_API_KEY`（优先使用）或 `OPENAI_API_KEY`
+ - （可选）`NEXT_PUBLIC_SENTRY_DSN` / `SENTRY_DSN` - Sentry 监控
 
 > 系统会自动优先使用 DeepSeek，有哪个用哪个。
 > The system will automatically use DeepSeek first, and fallback to OpenAI if DeepSeek is not configured.
@@ -104,6 +115,26 @@ npm run dev
 
 访问 http://localhost:3000 开始使用
 Visit http://localhost:3000 to start using
+
+---
+
+## 架构与模块 Architecture
+
+- pages：仅页面编排（`task-planner.tsx` 为中控），不放业务逻辑
+- lib/constants：常量与文案映射
+- lib/services：业务服务（分配、订单加载、提交等）
+- lib/hooks：视图逻辑与交互封装
+- components：UI 组件
+- lib/smartMatch.ts：候选与模式排序算法
+- lib/services/recommendationCache.ts：候选与选择快照（避免二次进入退化）
+
+---
+
+## 部署 Deployment
+
+- 推荐 Vercel，一键导入 GitHub 仓库
+- 环境变量：见上文
+- 部署成功后可开启 Vercel Analytics 与 Sentry 监控
 
 ---
 

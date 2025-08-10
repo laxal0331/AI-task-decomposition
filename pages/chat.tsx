@@ -202,8 +202,8 @@ export default function Chat() {
         </div>
         <div style={{display:'flex',gap:10}}>
           <input value={input} onChange={e=>setInput(e.target.value)} placeholder={t.inputPlaceholder} style={{flex:1,padding:'10px 14px',borderRadius:8,border:'1px solid #e5e7eb',fontSize:16}} onKeyDown={e=>{if(e.key==='Enter')sendMsg();}} />
-          <button className="btn" style={{background:'#1890ff',color:'#fff',borderRadius:8,fontWeight:600,padding:'10px 28px',fontSize:16}} onClick={sendMsg}>{t.send}</button>
-          <button className="btn" style={{background:'#f1f5f9',color:'#222',borderRadius:8,fontWeight:600,padding:'10px 28px',fontSize:16}} onClick={()=>router.back()}>{t.back}</button>
+          <button className="btn" style={{fontWeight:600,padding:'10px 28px',fontSize:16}} onClick={sendMsg}>{t.send}</button>
+          <button className="btn" data-variant="secondary" style={{fontWeight:600,padding:'10px 28px',fontSize:16}} onClick={()=>router.back()}>{t.back}</button>
         </div>
       </div>
     </div>
