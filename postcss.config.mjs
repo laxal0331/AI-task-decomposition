@@ -1,5 +1,6 @@
-import tailwind from '@tailwindcss/postcss';
-
+// Next.js expects PostCSS plugins as string keys (not function instances)
 export default {
-  plugins: [tailwind],
+  plugins: {
+    '@tailwindcss/postcss': {},
+  },
 };
