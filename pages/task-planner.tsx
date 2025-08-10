@@ -553,6 +553,9 @@ export default function TaskPlanner() {
         value={input}
         onChange={(e) => setInput(e.target.value)}
       />
+      <div style={{ color: '#e2e8f0', fontSize: 12, marginTop: -8, marginBottom: 12 }}>
+        {lang === 'zh' ? '提示：AI 拆解通常需要 1-2 分钟，请耐心等待。' : 'Tip: AI decomposition usually takes 1–2 minutes, please wait.'}
+      </div>
       <button
         onClick={handleSubmit}
         className="btn"
