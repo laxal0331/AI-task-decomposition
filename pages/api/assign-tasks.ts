@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { taskService, teamMemberService, orderService } from '../../lib/dbService';
+import { roleMap } from '../../lib/teamData';
 
 // 定义类型
 interface TeamMember {
@@ -69,13 +70,42 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       for (const task of unassignedTasks) {
         // 查找满足角色且有足够可用工时的成员
         let candidate: Candidate | null = null;
+        
+        // 使用角色映射，与前端保持一致
+        const taskRole = roleMap[task.role_zh] || task.role_zh;
+        
         for (const member of allMembers) {
-          // 角色匹配
+          // 角色匹配 - 使用与前端相同的逻辑
           let roles: string[] = [];
           try {
             roles = typeof member.roles === 'string' ? JSON.parse(member.roles) : member.roles;
           } catch { roles = []; }
-          if (!roles || !roles.includes(task.role_zh)) continue;
+          
+          // 1. 精确匹配
+          if (!roles || !roles.includes(taskRole)) {
+            // 2. 全栈工程师可以匹配任何角色
+            if (!roles || !roles.includes('全栈工程师')) {
+              // 3. 相关角色的交叉匹配
+              const roleCompatibility = {
+                '前端工程师': ['UI设计师', 'UX设计师', '全栈工程师'],
+                '后端工程师': ['数据库工程师', 'DevOps工程师', '全栈工程师'],
+                'UI设计师': ['前端工程师', 'UX设计师'],
+                'UX设计师': ['前端工程师', 'UI设计师', '产品经理'],
+                '数据库工程师': ['后端工程师', 'DevOps工程师'],
+                'DevOps工程师': ['后端工程师', '数据库工程师'],
+                '测试工程师': ['前端工程师', '后端工程师', '全栈工程师'],
+                '产品经理': ['UX设计师', 'UI设计师'],
+                '杂项专员': [], // 杂项专员只能精确匹配或全栈
+                '项目经理': ['产品经理', 'UX设计师', 'UI设计师']
+              };
+              
+              // 检查是否有兼容角色
+              const compatibleRoles = roleCompatibility[taskRole] || [];
+              if (!roles.some(role => compatibleRoles.includes(role))) {
+                continue; // 没有匹配的角色
+              }
+            }
+          }
 
           // 工时匹配
           const availableHours: number[] = getAvailableHours(member);
@@ -103,7 +133,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       res.status(200).json({ message: '分配完成', assignments: autoAssignments });
     } catch (error) {
-      console.error('自动分配任务失败', error);
+      if (process.env.NODE_ENV !== 'production') console.error('自动分配任务失败', error);
       res.status(500).json({ error: '自动分配任务失败', details: String(error) });
     }
   } else {

@@ -166,9 +166,4 @@ const roleMap: Record<string, string> = {
   // 可根据实际拆解结果继续补充
 };
 
-// 新增：批量初始化成员到数据库
-export function seedTeamMembers(cb: (members: TeamMember[]) => Promise<void>) {
-  cb(teamData);
-}
-
 export { roleMap }; 

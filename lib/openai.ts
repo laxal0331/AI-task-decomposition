@@ -35,7 +35,7 @@ export async function getTasksFromAI(goal: string, lang: 'zh' | 'en' = 'zh') {
   if (deepseekKey) {
     // DeepSeek API 调用
     try {
-      console.log("开始调用DeepSeek API，目标：", goal);
+      if (process.env.NODE_ENV !== 'production') console.log("开始调用DeepSeek API，目标：", goal);
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 25000); // 25秒超时
       
@@ -72,7 +72,7 @@ export async function getTasksFromAI(goal: string, lang: 'zh' | 'en' = 'zh') {
       const reply = json.choices?.[0]?.message?.content;
       if (!reply) throw new Error(t.deepseekResponseError);
       
-      console.log("DeepSeek AI 原始响应:", reply);
+      if (process.env.NODE_ENV !== 'production') console.log("DeepSeek AI 原始响应:", reply);
       
       // 检查AI是否返回了错误提示而不是任务数据
       const isErrorResponse = lang === 'zh' 
@@ -90,7 +90,7 @@ export async function getTasksFromAI(goal: string, lang: 'zh' | 'en' = 'zh') {
       try {
         tasks = JSON.parse(cleaned);
       } catch (parseError) {
-        console.log("JSON解析失败，原始内容:", cleaned);
+        if (process.env.NODE_ENV !== 'production') console.log("JSON解析失败，原始内容:", cleaned);
         
         // 检查是否看起来像JSON但有格式错误
         if (cleaned.startsWith('[') || cleaned.startsWith('{')) {
@@ -128,7 +128,37 @@ export async function getTasksFromAI(goal: string, lang: 'zh' | 'en' = 'zh') {
           newTasks.push({ ...t, splittable: false });
         }
       }
-      return newTasks;
+      // 角色规范化：仅允许预设角色，按关键词映射，无法命中则归为“杂项专员”
+      const ROLE_CATALOG = [
+        { zh: '前端工程师', en: 'Frontend Engineer', keywords: ['前端', 'web', 'h5', '小程序', 'react', 'vue'] },
+        { zh: '后端工程师', en: 'Backend Engineer', keywords: ['后端', '服务端', '接口', 'spring', 'java', 'node', 'go', 'python', '架构', '系统架构'] },
+        { zh: 'UI设计师', en: 'UI Designer', keywords: ['ui', '视觉', '界面'] },
+        { zh: 'UX设计师', en: 'UX Designer', keywords: ['ux', '交互', '体验', '用户研究', '用户体验'] },
+        { zh: '测试工程师', en: 'Test Engineer', keywords: ['测试', 'qa', '质量', '质量保证'] },
+        { zh: '数据库工程师', en: 'Database Engineer', keywords: ['数据库', 'dba', '数据表', '数据建模'] },
+        { zh: '产品经理', en: 'Product Manager', keywords: ['产品经理', 'pm', '产品'] },
+        { zh: 'DevOps工程师', en: 'DevOps Engineer', keywords: ['devops', '运维', '部署', 'ci/cd', '系统管理员'] },
+        { zh: '全栈工程师', en: 'Full Stack Engineer', keywords: ['全栈'] },
+      ];
+      const FALLBACK = { zh: '杂项专员', en: 'General Specialist' };
+      const normalizeRole = (raw?: string) => {
+        const s = (raw || '').toLowerCase();
+        for (const r of ROLE_CATALOG) {
+          if (r.keywords.some(k => s.includes(k.toLowerCase()))) return r;
+        }
+        // 直接精确匹配（AI 已给标准名）
+        const direct = ROLE_CATALOG.find(r => r.zh === raw || r.en.toLowerCase() === s);
+        return direct || FALLBACK;
+      };
+      const normalized = newTasks.map((t: any) => {
+        const r = normalizeRole(t.role_zh || t.role || '');
+        return {
+          ...t,
+          role_zh: r.zh,
+          role_en: r.en,
+        };
+      });
+      return normalized;
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
         throw new Error(t.deepseekTimeout);
@@ -138,7 +168,7 @@ export async function getTasksFromAI(goal: string, lang: 'zh' | 'en' = 'zh') {
   } else if (openaiKey) {
     // OpenAI API 调用
     try {
-      console.log("开始调用OpenAI API，目标：", goal);
+      if (process.env.NODE_ENV !== 'production') console.log("开始调用OpenAI API，目标：", goal);
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 25000); // 25秒超时
       
@@ -175,7 +205,7 @@ export async function getTasksFromAI(goal: string, lang: 'zh' | 'en' = 'zh') {
       const reply = json.choices?.[0]?.message?.content;
       if (!reply) throw new Error(t.openaiResponseError);
       
-      console.log("OpenAI 原始响应:", reply);
+      if (process.env.NODE_ENV !== 'production') console.log("OpenAI 原始响应:", reply);
       
       // 检查AI是否返回了错误提示而不是任务数据
       const isErrorResponse = lang === 'zh' 
@@ -193,7 +223,7 @@ export async function getTasksFromAI(goal: string, lang: 'zh' | 'en' = 'zh') {
       try {
         tasks = JSON.parse(cleaned);
       } catch (parseError) {
-        console.log("JSON解析失败，原始内容:", cleaned);
+        if (process.env.NODE_ENV !== 'production') console.log("JSON解析失败，原始内容:", cleaned);
         
         // 检查是否看起来像JSON但有格式错误
         if (cleaned.startsWith('[') || cleaned.startsWith('{')) {
@@ -231,7 +261,36 @@ export async function getTasksFromAI(goal: string, lang: 'zh' | 'en' = 'zh') {
           newTasks.push({ ...t, splittable: false });
         }
       }
-      return newTasks;
+      // 同上进行角色规范化
+      const ROLE_CATALOG = [
+        { zh: '前端工程师', en: 'Frontend Engineer', keywords: ['前端', 'web', 'h5', '小程序', 'react', 'vue'] },
+        { zh: '后端工程师', en: 'Backend Engineer', keywords: ['后端', '服务端', '接口', 'spring', 'java', 'node', 'go', 'python', '架构', '系统架构'] },
+        { zh: 'UI设计师', en: 'UI Designer', keywords: ['ui', '视觉', '界面'] },
+        { zh: 'UX设计师', en: 'UX Designer', keywords: ['ux', '交互', '体验', '用户研究', '用户体验'] },
+        { zh: '测试工程师', en: 'Test Engineer', keywords: ['测试', 'qa', '质量', '质量保证'] },
+        { zh: '数据库工程师', en: 'Database Engineer', keywords: ['数据库', 'dba', '数据表', '数据建模'] },
+        { zh: '产品经理', en: 'Product Manager', keywords: ['产品经理', 'pm', '产品'] },
+        { zh: 'DevOps工程师', en: 'DevOps Engineer', keywords: ['devops', '运维', '部署', 'ci/cd', '系统管理员'] },
+        { zh: '全栈工程师', en: 'Full Stack Engineer', keywords: ['全栈'] },
+      ];
+      const FALLBACK = { zh: '杂项专员', en: 'General Specialist' };
+      const normalizeRole = (raw?: string) => {
+        const s = (raw || '').toLowerCase();
+        for (const r of ROLE_CATALOG) {
+          if (r.keywords.some(k => s.includes(k.toLowerCase()))) return r;
+        }
+        const direct = ROLE_CATALOG.find(r => r.zh === raw || r.en.toLowerCase() === s);
+        return direct || FALLBACK;
+      };
+      const normalized = newTasks.map((t: any) => {
+        const r = normalizeRole(t.role_zh || t.role || '');
+        return {
+          ...t,
+          role_zh: r.zh,
+          role_en: r.en,
+        };
+      });
+      return normalized;
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
         throw new Error(t.openaiTimeout);

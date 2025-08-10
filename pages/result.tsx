@@ -2,7 +2,7 @@ import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import React from 'react';
 import { ProgressBar } from '../lib/ProgressBar';
-import { STATUS } from './task-planner';
+import { STATUS } from '../lib/constants/status';
 
 // 状态国际化映射表
 const statusI18n = {
@@ -162,22 +162,14 @@ export default function ResultPage() {
     try {
       const res = await fetch(`/api/orders?orderId=${orderId}`);
       const data = await res.json();
-      
       if (data.error) {
-        console.error('Fetch order error:', data.error);
+        if (process.env.NODE_ENV !== 'production') console.error('Fetch order error:', data.error);
         return;
       }
-      
-      setData({
-        tasks: data.tasks || [],
-        selectedMembers: data.selectedMembers || {},
-        orderId: orderId
-      });
-      if (data.order && data.order.status) {
-        setOrderStatus(data.order.status);
-      }
+      setData({ tasks: data.tasks || [], selectedMembers: data.selectedMembers || {}, orderId });
+      if (data.order && data.order.status) setOrderStatus(data.order.status);
     } catch (error) {
-      console.error('Fetch order error:', error);
+      if (process.env.NODE_ENV !== 'production') console.error('Fetch order error:', error);
     }
   };
 

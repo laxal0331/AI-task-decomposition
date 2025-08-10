@@ -165,24 +165,24 @@ export default function ClientView() {
     try {
       const res = await fetch('/api/orders');
       const data = await res.json();
-      console.log('orders:', data.orders);
+      if (process.env.NODE_ENV !== 'production') console.log('orders:', data.orders);
       if (data.orders && data.orders.length > 0) {
         // 强制取第一个订单测试
         const latestOrder = data.orders[0];
-        console.log('latestOrder:', latestOrder);
+        if (process.env.NODE_ENV !== 'production') console.log('latestOrder:', latestOrder);
         if (latestOrder && latestOrder.id) {
           const taskUrl = `/api/orders?orderId=${latestOrder.id}`;
-          console.log('请求任务接口:', taskUrl);
+          if (process.env.NODE_ENV !== 'production') console.log('请求任务接口:', taskUrl);
           const tasksRes = await fetch(taskUrl);
           const tasksData = await tasksRes.json();
-          console.log('tasksData:', tasksData);
+          if (process.env.NODE_ENV !== 'production') console.log('tasksData:', tasksData);
           if (tasksData.tasks) {
             const tasksWithMember = (tasksData.tasks as Task[]).map((task: Task) => ({
               ...task,
               assignedMemberId: task.assigned_member_id,
               orderId: latestOrder.id
             }));
-            console.log('tasksWithMember:', JSON.stringify(tasksWithMember, null, 2), 'memberId:', memberId);
+            if (process.env.NODE_ENV !== 'production') console.log('tasksWithMember:', JSON.stringify(tasksWithMember, null, 2), 'memberId:', memberId);
             setTasks(tasksWithMember);
           } else {
             setTasks([]);
@@ -194,7 +194,7 @@ export default function ClientView() {
         setTasks([]);
       }
     } catch (error) {
-      console.error('Fetch tasks error:', error);
+      if (process.env.NODE_ENV !== 'production') console.error('Fetch tasks error:', error);
     }
   }, [memberId]);
 
@@ -286,10 +286,10 @@ export default function ClientView() {
   };
 
   // 增强过滤逻辑，确保类型一致且去除空格
-  console.log('memberId:', memberId, 'assignedMemberIds:', tasks.map(t => t.assignedMemberId));
+  if (process.env.NODE_ENV !== 'production') console.log('memberId:', memberId, 'assignedMemberIds:', tasks.map(t => t.assignedMemberId));
   const myTasks = tasks.filter(t => String(t.assignedMemberId).trim() === String(memberId).trim());
-  console.log('myTasks:', myTasks);
-  console.log('myTasks详细信息:', myTasks.map(t => ({ id: t.id, status: t.status, type: typeof t.status })));
+  if (process.env.NODE_ENV !== 'production') console.log('myTasks:', myTasks);
+  if (process.env.NODE_ENV !== 'production') console.log('myTasks详细信息:', myTasks.map(t => ({ id: t.id, status: t.status, type: typeof t.status })));
 
   return (
     <div style={{ position: 'relative', minHeight: '100vh', width: '100vw', height: '100vh', overflow: 'auto', backgroundImage: 'url(/bg-client.jpg)', backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }}>

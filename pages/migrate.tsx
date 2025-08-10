@@ -92,9 +92,26 @@ export default function MigratePage() {
     setResult(null);
 
     try {
+      // 汇总本地数据并提交给后端
+      const orders = isClient ? JSON.parse(localStorage.getItem('orders') || '[]') : [];
+      const chats: Record<string, { orderId?: string; taskId?: string; messages: { role: string; text: string }[] } > = {};
+      if (isClient) {
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith('chat_')) {
+            try {
+              const messages = JSON.parse(localStorage.getItem(key) || '[]');
+              const [orderId, taskId] = key.replace('chat_', '').split('_');
+              chats[key] = { orderId, taskId, messages };
+            } catch {}
+          }
+        }
+      }
+
       const res = await fetch('/api/migrate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orders, chats })
       });
 
       const data = await res.json();

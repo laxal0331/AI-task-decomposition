@@ -7,8 +7,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // 从 localStorage 读取数据
-    const orders = JSON.parse(localStorage.getItem('orders') || '[]');
+    // 由前端提交历史数据
+    const { orders = [], chats = {} } = req.body || {};
     let migratedCount = 0;
 
     for (const order of orders) {
@@ -44,26 +44,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         
         migratedCount++;
       } catch (error) {
-        console.error(`Failed to migrate order ${order.id}:`, error);
+        if (process.env.NODE_ENV !== 'production') console.error(`Failed to migrate order ${order.id}:`, error);
       }
     }
 
-    // 迁移聊天消息
+    // 迁移聊天消息（chats 结构: { [key: string]: {orderId, taskId, messages: {role,text}[]} })
     let messageCount = 0;
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith('chat_')) {
-        try {
-          const messages = JSON.parse(localStorage.getItem(key) || '[]');
-          const [orderId, taskId] = key.replace('chat_', '').split('_');
-          
-          for (const msg of messages) {
-            await chatService.sendMessage(orderId, taskId, msg.role, msg.text);
-            messageCount++;
-          }
-        } catch (error) {
-          console.error(`Failed to migrate chat messages for key ${key}:`, error);
+    for (const key of Object.keys(chats)) {
+      try {
+        const item = chats[key];
+        const orderId = item.orderId || (key.startsWith('chat_') ? key.replace('chat_', '').split('_')[0] : undefined);
+        const taskId = item.taskId || (key.startsWith('chat_') ? key.replace('chat_', '').split('_')[1] : undefined);
+        const messages = item.messages || [];
+        if (!orderId || !taskId) continue;
+        for (const msg of messages) {
+          await chatService.sendMessage(orderId, taskId, msg.role, msg.text);
+          messageCount++;
         }
+      } catch (error) {
+        if (process.env.NODE_ENV !== 'production') console.error(`Failed to migrate chat messages for key ${key}:`, error);
       }
     }
 
@@ -72,7 +71,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       message: `迁移完成！成功迁移 ${migratedCount} 个订单和 ${messageCount} 条消息` 
     });
   } catch (error) {
-    console.error('Migration error:', error);
+    if (process.env.NODE_ENV !== 'production') console.error('Migration error:', error);
     res.status(500).json({ 
       error: '迁移失败', 
       details: String(error) 

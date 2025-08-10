@@ -16,7 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       
       res.status(200).json({ message: '任务状态更新成功' });
     } catch (error) {
-      console.error('Update task status error:', error);
+      if (process.env.NODE_ENV !== 'production') console.error('Update task status error:', error);
       res.status(500).json({ error: '更新任务状态失败', details: String(error) });
     }
   } else {

@@ -84,57 +84,7 @@ const texts = {
   },
 };
 
-// 角色映射表 - 用于中英文角色名称的转换
-const roleMapping = {
-  '前端工程师': 'Frontend Engineer',
-  '后端工程师': 'Backend Engineer',
-  'UI设计师': 'UI Designer',
-  'UX设计师': 'UX Designer',
-  '测试工程师': 'Test Engineer',
-  '数据库工程师': 'Database Engineer',
-  '产品经理': 'Product Manager',
-  'DevOps工程师': 'DevOps Engineer',
-  '全栈工程师': 'Full Stack Engineer',
-  '杂项专员': 'General Specialist',
-  // 反向映射
-  'Frontend Engineer': '前端工程师',
-  'Backend Engineer': '后端工程师',
-  'UI Designer': 'UI设计师',
-  'UX Designer': 'UX设计师',
-  'Test Engineer': '测试工程师',
-  'Database Engineer': '数据库工程师',
-  'Product Manager': '产品经理',
-  'DevOps Engineer': 'DevOps工程师',
-  'Full Stack Engineer': '全栈工程师',
-  'General Specialist': '杂项专员'
-};
-
-const roles = {
-  zh: [
-    '前端工程师',
-    '后端工程师',
-    'UI设计师',
-    'UX设计师',
-    '测试工程师',
-    '数据库工程师',
-    '产品经理',
-    'DevOps工程师',
-    '全栈工程师',
-    '杂项专员'
-  ],
-  en: [
-    'Frontend Engineer',
-    'Backend Engineer',
-    'UI Designer',
-    'UX Designer',
-    'Test Engineer',
-    'Database Engineer',
-    'Product Manager',
-    'DevOps Engineer',
-    'Full Stack Engineer',
-    'General Specialist'
-  ]
-};
+import { roleMapping, roles } from '../lib/constants/developerRoles';
 
 export default function DeveloperManagement() {
   const router = useRouter();
@@ -173,7 +123,7 @@ export default function DeveloperManagement() {
       const data = await res.json();
       setDevelopers(data.members || []);
     } catch (error) {
-      console.error('Fetch developers error:', error);
+      if (process.env.NODE_ENV !== 'production') console.error('Fetch developers error:', error);
     }
   };
 
@@ -308,7 +258,7 @@ export default function DeveloperManagement() {
         throw new Error('Request failed');
       }
     } catch (error) {
-      console.error('Submit error:', error);
+      if (process.env.NODE_ENV !== 'production') console.error('Submit error:', error);
       setSuccessMessage(editingId ? t.updateError : t.error);
       setIsSuccess(false);
       setShowSuccessMessage(true);
@@ -400,7 +350,7 @@ export default function DeveloperManagement() {
         setDeleteId(null);
       }
     } catch (error) {
-      console.error('Delete error:', error);
+      if (process.env.NODE_ENV !== 'production') console.error('Delete error:', error);
     }
   };
 
@@ -923,7 +873,6 @@ export default function DeveloperManagement() {
                             'Wix': 'Wix',
                             'Weebly': 'Weebly',
                             'Bubble': 'Bubble',
-                            'Webflow': 'Webflow',
                             'Framer': 'Framer',
                             'InVision': 'InVision',
                             'Marvel': 'Marvel',
@@ -939,12 +888,6 @@ export default function DeveloperManagement() {
                             'OmniGraffle': 'OmniGraffle',
                             'Whimsical': 'Whimsical',
                             'Miro': 'Miro',
-                            'Mural': 'Mural',
-                            'Stormboard': 'Stormboard',
-                            'Conceptboard': 'Conceptboard',
-                            'RealtimeBoard': 'RealtimeBoard',
-                            'InVision Freehand': 'InVision Freehand',
-                            'Figma Jam': 'Figma Jam',
                             'Mural': 'Mural',
                             'Stormboard': 'Stormboard',
                             'Conceptboard': 'Conceptboard',

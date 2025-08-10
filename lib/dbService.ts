@@ -156,7 +156,7 @@ export const taskService = {
 export const chatService = {
   // 发送消息
   async sendMessage(orderId: string, taskId: string, role: string, message: string) {
-    console.log('chatService.sendMessage 参数:', { orderId, taskId, role, message });
+    if (process.env.NODE_ENV !== 'production') console.log('chatService.sendMessage 参数:', { orderId, taskId, role, message });
     
     try {
       // 注意：不要传入 id 字段，让数据库自动生成
@@ -167,13 +167,13 @@ export const chatService = {
         message
       };
       
-      console.log('准备插入的数据:', insertData);
+      if (process.env.NODE_ENV !== 'production') console.log('准备插入的数据:', insertData);
       
       const { data, error } = await supabase
         .from('chat_messages')
         .insert(insertData);
       
-      console.log('Supabase 插入结果:', { data, error });
+      if (process.env.NODE_ENV !== 'production') console.log('Supabase 插入结果:', { data, error });
       
       if (error) {
         console.error('Supabase 插入错误:', error);
@@ -186,7 +186,7 @@ export const chatService = {
         throw error;
       }
       
-      console.log('✅ 消息插入成功');
+      if (process.env.NODE_ENV !== 'production') console.log('✅ 消息插入成功');
       return data;
     } catch (err) {
       console.error('❌ sendMessage 捕获错误:', err);
@@ -271,6 +271,71 @@ export const teamMemberService = {
         };
       }
     });
+  },
+
+  // 新增单个成员
+  async create(member: {
+    id: string;
+    name: string;
+    name_en?: string;
+    roles: string[];
+    hourly_rate: number;
+    speed_factor: number;
+    available_hours: number[];
+    skills: string[];
+    experience_score?: number;
+  }) {
+    const { error } = await supabase
+      .from('team_members')
+      .insert({
+        id: member.id,
+        name: member.name,
+        name_en: member.name_en || member.name,
+        name_zh: member.name,
+        roles: JSON.stringify(member.roles),
+        hourly_rate: member.hourly_rate,
+        speed_factor: member.speed_factor,
+        available_hours: JSON.stringify(member.available_hours),
+        skills: JSON.stringify(member.skills),
+        experience_score: member.experience_score ?? 70,
+      });
+    if (error) throw error;
+  },
+
+  // 更新成员
+  async update(memberId: string, updates: Partial<{
+    name: string;
+    name_en: string;
+    roles: string[];
+    hourly_rate: number;
+    speed_factor: number;
+    available_hours: number[] | string; // 允许传字符串以兼容旧调用
+    skills: string[];
+    experience_score: number;
+  }>) {
+    const payload: any = { ...updates };
+    if (updates.roles) payload.roles = JSON.stringify(updates.roles);
+    if (updates.skills) payload.skills = JSON.stringify(updates.skills);
+    if (updates.available_hours) {
+      payload.available_hours = Array.isArray(updates.available_hours)
+        ? JSON.stringify(updates.available_hours)
+        : updates.available_hours;
+    }
+
+    const { error } = await supabase
+      .from('team_members')
+      .update(payload)
+      .eq('id', memberId);
+    if (error) throw error;
+  },
+
+  // 删除成员
+  async remove(memberId: string) {
+    const { error } = await supabase
+      .from('team_members')
+      .delete()
+      .eq('id', memberId);
+    if (error) throw error;
   },
 
   // 更新成员可用工时

@@ -16,7 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       await orderService.updateOrderStatus(orderId as string, status);
       res.status(200).json({ message: '订单状态更新成功' });
     } catch (error) {
-      console.error('Update order status error:', error);
+      if (process.env.NODE_ENV !== 'production') console.error('Update order status error:', error);
       res.status(500).json({ error: '订单状态更新失败', details: String(error) });
     }
   } else if (req.method === 'DELETE') {
@@ -30,7 +30,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       
       res.status(200).json({ message: '订单删除成功' });
     } catch (error) {
-      console.error('Delete order error:', error);
+      if (process.env.NODE_ENV !== 'production') console.error('Delete order error:', error);
       res.status(500).json({ error: '删除订单失败', details: String(error) });
     }
   } else {

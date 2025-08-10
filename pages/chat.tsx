@@ -44,11 +44,11 @@ export default function Chat() {
     if (!orderId || !taskId) return;
     
     try {
-      console.log('Fetching messages for:', { orderId, taskId });
+      if (process.env.NODE_ENV !== 'production') console.log('Fetching messages for:', { orderId, taskId });
       const res = await fetch(`/api/chat?orderId=${orderId}&taskId=${taskId}`);
       const data = await res.json();
       
-      console.log('Chat API response:', data);
+      if (process.env.NODE_ENV !== 'production') console.log('Chat API response:', data);
       
       if (data.messages) {
         const formattedMessages = data.messages.map((msg: any) => ({
@@ -56,14 +56,14 @@ export default function Chat() {
           time: new Date(msg.created_at).getTime(),
           role: msg.role
         }));
-        console.log('Formatted messages:', formattedMessages);
+        if (process.env.NODE_ENV !== 'production') console.log('Formatted messages:', formattedMessages);
         setMessages(formattedMessages);
       } else {
-        console.log('No messages found');
+        if (process.env.NODE_ENV !== 'production') console.log('No messages found');
         setMessages([]);
       }
     } catch (error) {
-      console.error('Fetch messages error:', error);
+      if (process.env.NODE_ENV !== 'production') console.error('Fetch messages error:', error);
       setMessages([]);
     }
   }, [orderId, taskId]);
@@ -107,22 +107,22 @@ export default function Chat() {
 
   const sendMsg = async () => {
     if (!input.trim()) {
-      console.log('Input is empty');
+      if (process.env.NODE_ENV !== 'production') console.log('Input is empty');
       return;
     }
     
     if (!role) {
-      console.log('Role not set');
+      if (process.env.NODE_ENV !== 'production') console.log('Role not set');
       return;
     }
     
     if (!orderId || !taskId) {
-      console.log('Missing orderId or taskId:', { orderId, taskId });
+      if (process.env.NODE_ENV !== 'production') console.log('Missing orderId or taskId:', { orderId, taskId });
       return;
     }
     
-    console.log('Sending message:', { orderId, taskId, role, message: input });
-    console.log('发送消息前的检查通过');
+    if (process.env.NODE_ENV !== 'production') console.log('Sending message:', { orderId, taskId, role, message: input });
+    if (process.env.NODE_ENV !== 'production') console.log('发送消息前的检查通过');
     
     try {
       const res = await fetch('/api/chat', {
@@ -137,9 +137,9 @@ export default function Chat() {
       });
       
       const responseData = await res.json();
-      console.log('Send message response:', responseData);
-      console.log('Response status:', res.status);
-      console.log('Response ok:', res.ok);
+      if (process.env.NODE_ENV !== 'production') console.log('Send message response:', responseData);
+      if (process.env.NODE_ENV !== 'production') console.log('Response status:', res.status);
+      if (process.env.NODE_ENV !== 'production') console.log('Response ok:', res.ok);
       
       if (res.ok) {
         setInput('');

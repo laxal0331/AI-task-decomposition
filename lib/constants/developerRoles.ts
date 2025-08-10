@@ -1,0 +1,51 @@
+export const roleMapping: Record<string, string> = {
+  '前端工程师': 'Frontend Engineer',
+  '后端工程师': 'Backend Engineer',
+  'UI设计师': 'UI Designer',
+  'UX设计师': 'UX Designer',
+  '测试工程师': 'Test Engineer',
+  '数据库工程师': 'Database Engineer',
+  '产品经理': 'Product Manager',
+  'DevOps工程师': 'DevOps Engineer',
+  '全栈工程师': 'Full Stack Engineer',
+  '杂项专员': 'General Specialist',
+  'Frontend Engineer': '前端工程师',
+  'Backend Engineer': '后端工程师',
+  'UI Designer': 'UI设计师',
+  'UX Designer': 'UX设计师',
+  'Test Engineer': '测试工程师',
+  'Database Engineer': '数据库工程师',
+  'Product Manager': '产品经理',
+  'DevOps Engineer': 'DevOps工程师',
+  'Full Stack Engineer': '全栈工程师',
+  'General Specialist': '杂项专员',
+};
+
+export const roles: { zh: string[]; en: string[] } = {
+  zh: [
+    '前端工程师',
+    '后端工程师',
+    'UI设计师',
+    'UX设计师',
+    '测试工程师',
+    '数据库工程师',
+    '产品经理',
+    'DevOps工程师',
+    '全栈工程师',
+    '杂项专员',
+  ],
+  en: [
+    'Frontend Engineer',
+    'Backend Engineer',
+    'UI Designer',
+    'UX Designer',
+    'Test Engineer',
+    'Database Engineer',
+    'Product Manager',
+    'DevOps Engineer',
+    'Full Stack Engineer',
+    'General Specialist',
+  ],
+};
+
+

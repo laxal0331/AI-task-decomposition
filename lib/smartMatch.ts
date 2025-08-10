@@ -34,33 +34,24 @@ export function globalFastestAssignment(
   const taskOrder = tasks.map((t, i) => ({...t, idx: i})).sort((a, b) => b.estimated_hours - a.estimated_hours);
   const result: { [taskIdx: number]: SmartMatchResult[] } = {};
   for (const task of taskOrder) {
-    // 过滤有该角色的成员（放宽匹配条件）
     const taskRole = roleMap[task.role] || task.role; // 使用角色映射
-    const candidates = allMembers.filter(m => {
-      // 1. 精确匹配
-      if (m.roles.includes(taskRole)) return true;
-      
-      // 2. 全栈工程师可以匹配任何角色
-      if (m.roles.includes('全栈工程师')) return true;
-      
-      // 3. 相关角色的交叉匹配
-      const roleCompatibility = {
-        '前端工程师': ['UI设计师', 'UX设计师', '全栈工程师'],
-        '后端工程师': ['数据库工程师', 'DevOps工程师', '全栈工程师'],
-        'UI设计师': ['前端工程师', 'UX设计师'],
-        'UX设计师': ['前端工程师', 'UI设计师', '产品经理'],
-        '数据库工程师': ['后端工程师', 'DevOps工程师'],
-        'DevOps工程师': ['后端工程师', '数据库工程师'],
-        '测试工程师': ['前端工程师', '后端工程师', '全栈工程师'],
-        '产品经理': ['UX设计师', 'UI设计师'],
-        '杂项专员': [], // 杂项专员只能精确匹配或全栈
-        '项目经理': ['产品经理', 'UX设计师', 'UI设计师']
-      };
-      
-      // 检查是否有兼容角色
-      const compatibleRoles = roleCompatibility[taskRole] || [];
-      return m.roles.some(role => compatibleRoles.includes(role));
-    });
+    // 候选分层：先精确，再全栈，最后兼容
+    const exactCandidates = allMembers.filter(m => m.roles.includes(taskRole));
+    const fullstackCandidates = allMembers.filter(m => m.roles.includes('全栈工程师'));
+    const roleCompatibility = {
+      '前端工程师': ['UI设计师', 'UX设计师'],
+      '后端工程师': ['数据库工程师', 'DevOps工程师'],
+      'UI设计师': ['前端工程师', 'UX设计师'],
+      'UX设计师': ['前端工程师', 'UI设计师', '产品经理'],
+      '数据库工程师': ['后端工程师', 'DevOps工程师'],
+      'DevOps工程师': ['后端工程师', '数据库工程师'],
+      '测试工程师': ['前端工程师', '后端工程师'],
+      '产品经理': ['UX设计师', 'UI设计师'],
+      '杂项专员': [],
+      '项目经理': ['产品经理', 'UX设计师', 'UI设计师']
+    } as Record<string, string[]>;
+    const compatibleCandidates = allMembers.filter(m => (roleCompatibility[taskRole] || []).some(r => m.roles.includes(r)));
+    const candidates = exactCandidates.length > 0 ? exactCandidates : (fullstackCandidates.length > 0 ? fullstackCandidates : compatibleCandidates);
     const match: SmartMatchResult[] = candidates.map(member => {
       const used = assigned[member.id] || [0,0,0,0];
       const remain = member.available_hours.map((h, i) => h - (used[i] || 0));
@@ -226,39 +217,29 @@ export function smartMatchDevelopersForTask(
   assignedTasks: { [memberId: string]: number[] },
   assignMode: 'fast' | 'balanced' | 'slow'
 ): SmartMatchResult[] {
-  // 过滤有该角色的成员（放宽匹配条件）
-  const taskRole = roleMap[task.role] || task.role; // 使用角色映射
-  const candidates = allMembers.filter(m => {
-    // 1. 精确匹配
-    if (m.roles.includes(taskRole)) return true;
-    
-    // 2. 全栈工程师可以匹配任何角色
-    if (m.roles.includes('全栈工程师')) return true;
-    
-    // 3. 相关角色的交叉匹配
-    const roleCompatibility = {
-      '前端工程师': ['UI设计师', 'UX设计师', '全栈工程师'],
-      '后端工程师': ['数据库工程师', 'DevOps工程师', '全栈工程师'],
-      'UI设计师': ['前端工程师', 'UX设计师'],
-      'UX设计师': ['前端工程师', 'UI设计师', '产品经理'],
-      '数据库工程师': ['后端工程师', 'DevOps工程师'],
-      'DevOps工程师': ['后端工程师', '数据库工程师'],
-      '测试工程师': ['前端工程师', '后端工程师', '全栈工程师'],
-      '产品经理': ['UX设计师', 'UI设计师'],
-      '杂项专员': [], // 杂项专员只能精确匹配或全栈
-      '项目经理': ['产品经理', 'UX设计师', 'UI设计师']
-    };
-    
-    // 检查是否有兼容角色
-    const compatibleRoles = roleCompatibility[taskRole] || [];
-    return m.roles.some(role => compatibleRoles.includes(role));
-  });
+  const taskRole = roleMap[task.role] || task.role;
+  const exactCandidates = allMembers.filter(m => m.roles.includes(taskRole));
+  const fullstackCandidates = allMembers.filter(m => m.roles.includes('全栈工程师'));
+  const roleCompatibility = {
+    '前端工程师': ['UI设计师', 'UX设计师'],
+    '后端工程师': ['数据库工程师', 'DevOps工程师'],
+    'UI设计师': ['前端工程师', 'UX设计师'],
+    'UX设计师': ['前端工程师', 'UI设计师', '产品经理'],
+    '数据库工程师': ['后端工程师', 'DevOps工程师'],
+    'DevOps工程师': ['后端工程师', '数据库工程师'],
+    '测试工程师': ['前端工程师', '后端工程师'],
+    '产品经理': ['UX设计师', 'UI设计师'],
+    '杂项专员': [],
+    '项目经理': ['产品经理', 'UX设计师', 'UI设计师']
+  } as Record<string, string[]>;
+  const compatibleCandidates = allMembers.filter(m => (roleCompatibility[taskRole] || []).some(r => m.roles.includes(r)));
+  const baseCandidates = exactCandidates.length > 0 ? exactCandidates : (fullstackCandidates.length > 0 ? fullstackCandidates : compatibleCandidates);
   // 计算基准时薪
   const baseHourlyRate = allMembers.reduce((sum, m) => sum + m.hourly_rate, 0) / allMembers.length;
   // 计算基准速度
   const baseSpeed = allMembers.reduce((sum, m) => sum + m.speed_factor, 0) / allMembers.length;
   // 计算每个成员未来四周的剩余工时和实际完成任务所需工时
-  const results: SmartMatchResult[] = candidates.map(member => {
+  const results: SmartMatchResult[] = baseCandidates.map(member => {
     const used = assignedTasks[member.id] || [0,0,0,0];
     const remain = member.available_hours.map((h, i) => h - (used[i] || 0));
     const effectiveHours = Math.ceil(task.estimated_hours / member.speed_factor);
@@ -274,18 +255,16 @@ export function smartMatchDevelopersForTask(
   });
   // 按模式排序
   if (assignMode === 'fast') {
-    // 最快模式：只考虑速度，完全忽略价格
+    // 最快模式：并行优先（每个成员尽量只承担一个），再看速度
     results.sort((a, b) => {
-      // 首先按角色匹配度排序（精确匹配 > 兼容角色）
       const aExactMatch = a.member.roles.includes(taskRole) ? 1 : 0;
       const bExactMatch = b.member.roles.includes(taskRole) ? 1 : 0;
       if (aExactMatch !== bExactMatch) return bExactMatch - aExactMatch;
-      
-      // 然后按速度排序（最快模式的核心）
+      // 速度优先
       if (b.member.speed_factor !== a.member.speed_factor) return b.member.speed_factor - a.member.speed_factor;
-      // 然后按可用工时排序，确保有足够时间完成任务
+      // 可用工时多者优先
       if (a.totalAvailable !== b.totalAvailable) return b.totalAvailable - a.totalAvailable;
-      // 最快模式：完全忽略价格，不再考虑价格因素
+      return 0;
     });
   } else if (assignMode === 'balanced') {
     // 均衡：速度倍率和时薪都接近平均值
