@@ -36,8 +36,8 @@ export function globalFastestAssignment(
   for (const task of taskOrder) {
     const taskRole = roleMap[task.role] || task.role; // 使用角色映射
     // 候选分层：先精确，再全栈，最后兼容
-    const exactCandidates = allMembers.filter(m => m.roles.includes(taskRole));
-    const fullstackCandidates = allMembers.filter(m => m.roles.includes('全栈工程师'));
+    const exactCandidates = allMembers.filter(m => m.roles && m.roles.includes(taskRole));
+    const fullstackCandidates = allMembers.filter(m => m.roles && m.roles.includes('全栈工程师'));
     const roleCompatibility = {
       '前端工程师': ['UI设计师', 'UX设计师'],
       '后端工程师': ['数据库工程师', 'DevOps工程师'],
@@ -50,12 +50,12 @@ export function globalFastestAssignment(
       '杂项专员': [],
       '项目经理': ['产品经理', 'UX设计师', 'UI设计师']
     } as Record<string, string[]>;
-    const compatibleCandidates = allMembers.filter(m => (roleCompatibility[taskRole] || []).some(r => m.roles.includes(r)));
+    const compatibleCandidates = allMembers.filter(m => m.roles && (roleCompatibility[taskRole] || []).some(r => m.roles.includes(r)));
     const candidates = exactCandidates.length > 0 ? exactCandidates : (fullstackCandidates.length > 0 ? fullstackCandidates : compatibleCandidates);
     const match: SmartMatchResult[] = candidates.map(member => {
       const used = assigned[member.id] || [0,0,0,0];
-      const remain = member.available_hours.map((h, i) => h - (used[i] || 0));
-      const effectiveHours = Math.ceil(task.estimated_hours / member.speed_factor);
+      const remain = (member.available_hours || [40, 40, 40, 40]).map((h, i) => h - (used[i] || 0));
+      const effectiveHours = Math.ceil(task.estimated_hours / (member.speed_factor || 1.0));
       const totalAvailable = remain.reduce((a, b) => a + b, 0);
       return {
         member,
@@ -80,21 +80,21 @@ export function globalFastestAssignment(
               return aAssigned - bAssigned;
             }
             // 最快模式：只考虑速度，完全忽略价格
-            return b.member.speed_factor - a.member.speed_factor;
+            return (b.member.speed_factor || 1.0) - (a.member.speed_factor || 1.0);
           });
         for (const m of sorted) {
           if (remainHours <= 0) break;
-          const maxAssignable = Math.floor(m.totalAvailable * m.member.speed_factor);
+          const maxAssignable = Math.floor(m.totalAvailable * (m.member.speed_factor || 1.0));
           const assignHours = Math.min(remainHours, maxAssignable);
           if (assignHours > 0) {
             assignments.push({
               ...m,
               canAssign: true,
-              effectiveHours: Math.ceil(assignHours / m.member.speed_factor)
+              effectiveHours: Math.ceil(assignHours / (m.member.speed_factor || 1.0))
             });
-            let assignEff = Math.ceil(assignHours / m.member.speed_factor);
+            let assignEff = Math.ceil(assignHours / (m.member.speed_factor || 1.0));
             for (let w = 0; w < 4 && assignEff > 0; w++) {
-              const avail = m.member.available_hours[w] - (assigned[m.member.id][w] || 0);
+              const avail = (m.member.available_hours || [40, 40, 40, 40])[w] - (assigned[m.member.id][w] || 0);
               const use = Math.min(avail, assignEff);
               assigned[m.member.id][w] += use;
               assignEff -= use;
@@ -120,24 +120,24 @@ export function globalFastestAssignment(
             if (aCount !== bCount) return aCount - bCount;
             const baseHourlyRate = allMembers.reduce((sum, m) => sum + m.hourly_rate, 0) / allMembers.length;
             const baseSpeed = allMembers.reduce((sum, m) => sum + m.speed_factor, 0) / allMembers.length;
-            const aScore = Math.abs(a.member.speed_factor - baseSpeed) + Math.abs(a.member.hourly_rate - baseHourlyRate) / baseHourlyRate;
-            const bScore = Math.abs(b.member.speed_factor - baseSpeed) + Math.abs(b.member.hourly_rate - baseHourlyRate) / baseHourlyRate;
+            const aScore = Math.abs((a.member.speed_factor || 1.0) - baseSpeed) + Math.abs(a.member.hourly_rate - baseHourlyRate) / baseHourlyRate;
+            const bScore = Math.abs((b.member.speed_factor || 1.0) - baseSpeed) + Math.abs(b.member.hourly_rate - baseHourlyRate) / baseHourlyRate;
             if (aScore !== bScore) return aScore - bScore;
-            return b.member.speed_factor - a.member.speed_factor;
+            return (b.member.speed_factor || 1.0) - (a.member.speed_factor || 1.0);
           });
         for (const m of sorted) {
           if (remainHours <= 0) break;
-          const maxAssignable = Math.floor(m.totalAvailable * m.member.speed_factor);
+          const maxAssignable = Math.floor(m.totalAvailable * (m.member.speed_factor || 1.0));
           const assignHours = Math.min(remainHours, maxAssignable);
           if (assignHours > 0) {
             assignments.push({
               ...m,
               canAssign: true,
-              effectiveHours: Math.ceil(assignHours / m.member.speed_factor)
+              effectiveHours: Math.ceil(assignHours / (m.member.speed_factor || 1.0))
             });
-            let assignEff = Math.ceil(assignHours / m.member.speed_factor);
+            let assignEff = Math.ceil(assignHours / (m.member.speed_factor || 1.0));
             for (let w = 0; w < 4 && assignEff > 0; w++) {
-              const avail = m.member.available_hours[w] - (assigned[m.member.id][w] || 0);
+              const avail = (m.member.available_hours || [40, 40, 40, 40])[w] - (assigned[m.member.id][w] || 0);
               const use = Math.min(avail, assignEff);
               assigned[m.member.id][w] += use;
               assignEff -= use;
@@ -153,22 +153,22 @@ export function globalFastestAssignment(
           .filter(m => m.totalAvailable > 0)
           .sort((a, b) => {
             if (a.member.hourly_rate !== b.member.hourly_rate) return a.member.hourly_rate - b.member.hourly_rate;
-            if (b.member.speed_factor !== a.member.speed_factor) return b.member.speed_factor - a.member.speed_factor;
+            if ((b.member.speed_factor || 1.0) !== (a.member.speed_factor || 1.0)) return (b.member.speed_factor || 1.0) - (a.member.speed_factor || 1.0);
             return (memberTaskCount[a.member.id] || 0) - (memberTaskCount[b.member.id] || 0);
           });
         for (const m of sorted) {
           if (remainHours <= 0) break;
-          const maxAssignable = Math.floor(m.totalAvailable * m.member.speed_factor);
+          const maxAssignable = Math.floor(m.totalAvailable * (m.member.speed_factor || 1.0));
           const assignHours = Math.min(remainHours, maxAssignable);
           if (assignHours > 0) {
             assignments.push({
               ...m,
               canAssign: true,
-              effectiveHours: Math.ceil(assignHours / m.member.speed_factor)
+              effectiveHours: Math.ceil(assignHours / (m.member.speed_factor || 1.0))
             });
-            let assignEff = Math.ceil(assignHours / m.member.speed_factor);
+            let assignEff = Math.ceil(assignHours / (m.member.speed_factor || 1.0));
             for (let w = 0; w < 4 && assignEff > 0; w++) {
-              const avail = m.member.available_hours[w] - (assigned[m.member.id][w] || 0);
+              const avail = (m.member.available_hours || [40, 40, 40, 40])[w] - (assigned[m.member.id][w] || 0);
               const use = Math.min(avail, assignEff);
               assigned[m.member.id][w] += use;
               assignEff -= use;
@@ -183,7 +183,7 @@ export function globalFastestAssignment(
       // 不可拆分任务，根据分配模式排序
       match.sort((a, b) => {
         if (a.nextAvailableWeek !== b.nextAvailableWeek) return a.nextAvailableWeek - b.nextAvailableWeek;
-        if (b.member.speed_factor !== a.member.speed_factor) return b.member.speed_factor - a.member.speed_factor;
+        if ((b.member.speed_factor || 1.0) !== (a.member.speed_factor || 1.0)) return (b.member.speed_factor || 1.0) - (a.member.speed_factor || 1.0);
         // 根据分配模式决定是否考虑价格
         if (assignMode === 'fast') {
           // 最快模式：完全忽略价格
@@ -218,8 +218,8 @@ export function smartMatchDevelopersForTask(
   assignMode: 'fast' | 'balanced' | 'slow'
 ): SmartMatchResult[] {
   const taskRole = roleMap[task.role] || task.role;
-  const exactCandidates = allMembers.filter(m => m.roles.includes(taskRole));
-  const fullstackCandidates = allMembers.filter(m => m.roles.includes('全栈工程师'));
+  const exactCandidates = allMembers.filter(m => m.roles && m.roles.includes(taskRole));
+  const fullstackCandidates = allMembers.filter(m => m.roles && m.roles.includes('全栈工程师'));
   const roleCompatibility = {
     '前端工程师': ['UI设计师', 'UX设计师'],
     '后端工程师': ['数据库工程师', 'DevOps工程师'],
@@ -232,7 +232,7 @@ export function smartMatchDevelopersForTask(
     '杂项专员': [],
     '项目经理': ['产品经理', 'UX设计师', 'UI设计师']
   } as Record<string, string[]>;
-  const compatibleCandidates = allMembers.filter(m => (roleCompatibility[taskRole] || []).some(r => m.roles.includes(r)));
+  const compatibleCandidates = allMembers.filter(m => m.roles && (roleCompatibility[taskRole] || []).some(r => m.roles.includes(r)));
   const baseCandidates = exactCandidates.length > 0 ? exactCandidates : (fullstackCandidates.length > 0 ? fullstackCandidates : compatibleCandidates);
   // 计算基准时薪
   const baseHourlyRate = allMembers.reduce((sum, m) => sum + m.hourly_rate, 0) / allMembers.length;
@@ -241,8 +241,8 @@ export function smartMatchDevelopersForTask(
   // 计算每个成员未来四周的剩余工时和实际完成任务所需工时
   const results: SmartMatchResult[] = baseCandidates.map(member => {
     const used = assignedTasks[member.id] || [0,0,0,0];
-    const remain = member.available_hours.map((h, i) => h - (used[i] || 0));
-    const effectiveHours = Math.ceil(task.estimated_hours / member.speed_factor);
+    const remain = (member.available_hours || [40, 40, 40, 40]).map((h, i) => h - (used[i] || 0));
+    const effectiveHours = Math.ceil(task.estimated_hours / (member.speed_factor || 1.0));
     const totalAvailable = remain.reduce((a, b) => a + b, 0);
     return {
       member,
@@ -274,8 +274,8 @@ export function smartMatchDevelopersForTask(
       const bExactMatch = b.member.roles.includes(taskRole) ? 1 : 0;
       if (aExactMatch !== bExactMatch) return bExactMatch - aExactMatch;
       
-      const aScore = Math.abs(a.member.speed_factor - baseSpeed) + Math.abs(a.member.hourly_rate - baseHourlyRate) / baseHourlyRate;
-      const bScore = Math.abs(b.member.speed_factor - baseSpeed) + Math.abs(b.member.hourly_rate - baseHourlyRate) / baseHourlyRate;
+      const aScore = Math.abs((a.member.speed_factor || 1.0) - baseSpeed) + Math.abs(a.member.hourly_rate - baseHourlyRate) / baseHourlyRate;
+      const bScore = Math.abs((b.member.speed_factor || 1.0) - baseSpeed) + Math.abs(b.member.hourly_rate - baseHourlyRate) / baseHourlyRate;
       if (aScore !== bScore) return aScore - bScore;
       return b.totalAvailable - a.totalAvailable;
     });
@@ -289,7 +289,7 @@ export function smartMatchDevelopersForTask(
       
       if (a.member.hourly_rate !== b.member.hourly_rate) return a.member.hourly_rate - b.member.hourly_rate;
       if (a.nextAvailableWeek !== b.nextAvailableWeek) return a.nextAvailableWeek - b.nextAvailableWeek;
-      return b.member.speed_factor - a.member.speed_factor;
+      return (b.member.speed_factor || 1.0) - (a.member.speed_factor || 1.0);
     });
   }
   return results;

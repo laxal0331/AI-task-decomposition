@@ -87,6 +87,8 @@ export default function TaskPlanner() {
   const router = useRouter();
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMsg, setModalMsg] = useState("");
+  const [isTestMode, setIsTestMode] = useState(false);
+  const [testModeMessage, setTestModeMessage] = useState("");
   const [dbOrderId, setDbOrderId] = useState<string | null>(null);
   const [ordersOpen, setOrdersOpen] = useState(false);
   const [orders, setOrders] = useState<any[]>([]);
@@ -206,6 +208,21 @@ export default function TaskPlanner() {
       setTasks(normalized);
       setAssignedTasks({});
       setDbOrderId(data.orderId);
+      
+      // 处理测试模式
+      if (data.isTestMode) {
+        console.log('测试模式:', data.testModeMessage);
+        setIsTestMode(true);
+        setTestModeMessage(data.testModeMessage || '测试模式');
+        // 如果有预分配的测试数据，直接使用
+        if (data.assignments) {
+          setSelectedMembers(data.assignments);
+        }
+      } else {
+        setIsTestMode(false);
+        setTestModeMessage('');
+      }
+      
       if (data.orderData) {
         const existingOrders = JSON.parse(getLocalStorage('orders') || '[]');
         setLocalStorage('orders', JSON.stringify([...existingOrders, data.orderData]));
@@ -228,11 +245,50 @@ export default function TaskPlanner() {
       }
       if (ordersOpen) setTimeout(() => { refreshOrders(); }, 500);
     } catch (e) {
-      const msg = String(e).includes('500')
-        ? 'AI处理失败，请尝试：\n• 提供更详细的项目描述\n• 使用具体的功能说明\n• 稍后重试'
-        : '提交失败，请重试。如果问题持续，请稍后再试。';
-      setModalMsg(msg);
-      setModalOpen(true);
+      // 检查是否是AI处理失败
+      if (String(e).includes('500') || String(e).includes('AI') || String(e).includes('API')) {
+        // AI失败时，设置测试模式并显示特殊消息
+        setIsTestMode(true);
+        setTestModeMessage('AI服务暂时不可用，已切换到测试模式演示功能');
+        
+        // 使用模拟数据
+        const mockTasks = [
+          { id: "mock-task-1", title: "用户注册登录系统", title_zh: "用户注册登录系统", title_en: "User Registration System", role: "后端工程师", role_zh: "后端工程师", role_en: "Backend Engineer", estimated_hours: 16, status: "pending" },
+          { id: "mock-task-2", title: "商品展示页面", title_zh: "商品展示页面", title_en: "Product Display Pages", role: "前端工程师", role_zh: "前端工程师", role_en: "Frontend Engineer", estimated_hours: 12, status: "pending" },
+          { id: "mock-task-3", title: "购物车功能", title_zh: "购物车功能", title_en: "Shopping Cart Functionality", role: "全栈工程师", role_zh: "全栈工程师", role_en: "Full Stack Engineer", estimated_hours: 20, status: "pending" },
+          { id: "mock-task-4", title: "支付系统集成", title_zh: "支付系统集成", title_en: "Payment System Integration", role: "后端工程师", role_zh: "后端工程师", role_en: "Backend Engineer", estimated_hours: 24, status: "pending" },
+          { id: "mock-task-5", title: "订单管理系统", title_zh: "订单管理系统", title_en: "Order Management System", role: "全栈工程师", role_zh: "全栈工程师", role_en: "Full Stack Engineer", estimated_hours: 18, status: "pending" }
+        ];
+        
+        const mockMembers = [
+          { id: "mock-dev-1", name: "test1", role: "前端工程师", roles: ["前端工程师"], hourly_rate: 150, capacity: 40, available_hours: [10, 10, 10, 10], speed_factor: 1.0, skills: ["React", "Vue", "TypeScript"] },
+          { id: "mock-dev-2", name: "test2", role: "后端工程师", roles: ["后端工程师"], hourly_rate: 180, capacity: 40, available_hours: [10, 10, 10, 10], speed_factor: 1.2, skills: ["Node.js", "Python", "Java"] },
+          { id: "mock-dev-3", name: "test3", role: "全栈工程师", roles: ["全栈工程师", "前端工程师", "后端工程师"], hourly_rate: 200, capacity: 40, available_hours: [12, 12, 12, 12], speed_factor: 1.5, skills: ["React", "Node.js", "MongoDB"] },
+          { id: "mock-dev-4", name: "test4", role: "数据库工程师", roles: ["数据库工程师"], hourly_rate: 160, capacity: 40, available_hours: [8, 8, 8, 8], speed_factor: 0.9, skills: ["MySQL", "PostgreSQL", "Redis"] },
+          { id: "mock-dev-5", name: "test5", role: "测试工程师", roles: ["测试工程师"], hourly_rate: 140, capacity: 40, available_hours: [10, 10, 10, 10], speed_factor: 1.1, skills: ["Jest", "Cypress", "Selenium"] }
+        ];
+        
+        const mockAssignments = {
+          "mock-task-1": "mock-dev-2",
+          "mock-task-2": "mock-dev-1", 
+          "mock-task-3": "mock-dev-3",
+          "mock-task-4": "mock-dev-2",
+          "mock-task-5": "mock-dev-3"
+        };
+        
+        setTasks(mockTasks);
+        setTeamData(mockMembers);
+        setSelectedMembers(mockAssignments);
+        setDbOrderId(`mock-${Date.now()}`);
+        
+        const msg = 'AI处理失败，请尝试：\n• 提供更详细的项目描述\n• 使用具体的功能说明\n• 稍后重试\n\n💡 提示：如果仍然点击"确认分配"，将跳转到测试演示页面';
+        setModalMsg(msg);
+        setModalOpen(true);
+      } else {
+        const msg = '提交失败，请重试。如果问题持续，请稍后再试。';
+        setModalMsg(msg);
+        setModalOpen(true);
+      }
     } finally {
       setLoading(false);
     }
@@ -433,7 +489,10 @@ export default function TaskPlanner() {
         
         <div className="mt-6 space-y-4">
           <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-          <h2 className="text-lg font-semibold">{t.taskList}</h2>
+          <h2 className="text-lg font-semibold">
+            {t.taskList}
+            {isTestMode && <span style={{color: '#f59e0b', fontSize: '12px', marginLeft: '8px'}}>(测试数据)</span>}
+          </h2>
             <div style={{display:'flex', alignItems:'center', gap:8}}>
               <AssignModeSelector assignMode={assignMode} setAssignMode={setAssignMode} t={t} />
             </div>
@@ -478,6 +537,23 @@ export default function TaskPlanner() {
           
 
           
+          {/* 测试模式提示 - 成员分配 */}
+          {isTestMode && tasks.length > 0 && (
+            <div style={{
+              background: '#fef3c7',
+              border: '1px solid #f59e0b',
+              borderRadius: '8px',
+              padding: '12px 16px',
+              margin: '16px 0',
+              color: '#92400e',
+              fontSize: '14px',
+              textAlign: 'center'
+            }}>
+              <span style={{ fontWeight: 'bold' }}>🧪 测试模式：</span>
+              <span>以下成员分配和工时估算均为测试数据，用于演示功能流程</span>
+            </div>
+          )}
+
           {/* 确认分配按钮 */}
           {tasks.length > 0 && (
             <div className="mt-6 text-center" style={{ display: 'flex', justifyContent: 'center', gap: 16 }}>
@@ -596,6 +672,25 @@ export default function TaskPlanner() {
             lang={lang}
             onToggleLang={() => setLang(lang === 'zh' ? 'en' : 'zh')}
           />
+
+          {/* 测试模式提示 */}
+          {isTestMode && (
+            <div style={{
+              background: '#fef3c7',
+              border: '1px solid #f59e0b',
+              borderRadius: '8px',
+              padding: '12px 16px',
+              margin: '16px 0',
+              color: '#92400e',
+              fontSize: '14px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <span style={{ fontWeight: 'bold' }}>🧪 测试模式</span>
+              <span>{testModeMessage}</span>
+            </div>
+          )}
 
           {/* 所有弹窗组件保持不变 */}
           

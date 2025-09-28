@@ -1,3 +1,6 @@
+// 导入fetch（Node.js环境兼容性）
+const fetch = (...args: any[]) => import('node-fetch').then(({default: fetch}) => fetch(...args));
+
 // 多语言错误提示
 const errorMessages = {
   zh: {

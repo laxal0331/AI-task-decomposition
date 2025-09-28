@@ -11,6 +11,9 @@ export interface DecomposeResult {
   orderId: string;
   orderData?: any;
   members?: any[];
+  isTestMode?: boolean;
+  testModeMessage?: string;
+  assignments?: { [taskId: string]: string };
 }
 
 export function useDecompose() {
