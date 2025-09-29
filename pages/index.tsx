@@ -377,9 +377,9 @@ export default function Home() {
           </div>
           
           {/* 开发者端卡片 - 第二页 */}
-          <div style={{ margin: '0 auto', width: '100%', maxWidth: 1200, padding: '0 16px', position: 'relative', height: '50vh' }}>
+          <div className="developer-section" style={{ margin: '0 auto', width: '100%', maxWidth: 1200, padding: '0 16px', position: 'relative', height: '50vh' }}>
             {/* 开发者端描述文字 */}
-            <div style={{
+            <div className="dev-desc" style={{
               position: 'absolute',
               left: '0',
               top: lang === 'zh' ? '15%' : '13%',
@@ -414,7 +414,7 @@ export default function Home() {
             </div>
             
             <div
-              className="card-responsive card-hover-blue"
+              className="card-responsive card-hover-blue dev-card"
               onClick={() => handleCardClick('client')}
               style={{
                 background: '#dbeafe',
@@ -737,6 +737,33 @@ export default function Home() {
           /* 开发者端按钮响应式 - 手机端 */
           .cards-row:last-child > div:last-child {
             top: 75% !important;
+          }
+        }
+      `}</style>
+      <style jsx global>{`
+        /* 开发者端区域 - 移动端间距优化 */
+        @media (max-width: 768px) {
+          .developer-section .dev-desc {
+            max-width: 95% !important;
+            left: 16px !important;
+            top: 38% !important;
+            padding-right: 50px !important;
+            transform: translateY(-50%) !important;
+          }
+          .developer-section .dev-card {
+            left: 16px !important;
+            top: 82% !important;
+            transform: translateY(-50%) !important;
+          }
+        }
+        @media (max-width: 480px) {
+          .developer-section .dev-desc {
+            max-width: 90% !important;
+            top: 34% !important;
+            padding-right: 30px !important;
+          }
+          .developer-section .dev-card {
+            top: 78% !important;
           }
         }
       `}</style>
