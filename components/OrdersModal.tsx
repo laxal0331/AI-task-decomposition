@@ -13,8 +13,6 @@ type OrdersModalProps = {
 };
 
 export default function OrdersModal({ open, orders, lang, t, onClose, onView, onDeleteClick }: OrdersModalProps) {
-  if (!open) return null;
-
   // 简易断点：小屏（< 640px）做更紧凑布局
   const [isSmall, setIsSmall] = useState<boolean>(false);
   useEffect(() => {
@@ -23,6 +21,8 @@ export default function OrdersModal({ open, orders, lang, t, onClose, onView, on
     window.addEventListener('resize', check);
     return () => window.removeEventListener('resize', check);
   }, []);
+
+  if (!open) return null;
 
   return (
     <div style={{ position: 'fixed', left: 0, top: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.15)', zIndex: 4000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isSmall ? 12 : 0 }}>
