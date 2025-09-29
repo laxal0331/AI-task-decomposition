@@ -655,6 +655,57 @@ export default function Home() {
             margin-right: 0 !important;
           }
         }
+        /* 更小屏幕进一步缩小按钮尺寸 */
+        @media (max-width: 480px) {
+          nav {
+            padding: 6px 12px !important;
+          }
+          nav div div:nth-child(2) {
+            gap: 8px !important;
+          }
+          nav div div:nth-child(2) button,
+          nav > div > button {
+            font-size: 12px !important;
+            padding: 5px 10px !important;
+            border-radius: 6px !important;
+          }
+        }
+        /* 极小屏进一步压缩尺寸 */
+        @media (max-width: 420px) {
+          nav div div:nth-child(2) { gap: 6px !important; }
+          nav div div:nth-child(2) button,
+          nav > div > button {
+            font-size: 11px !important;
+            padding: 4px 8px !important;
+          }
+        }
+        @media (max-width: 360px) {
+          nav {
+            padding: 4px 10px !important;
+          }
+          nav div div:nth-child(2) { gap: 4px !important; }
+          nav div div:nth-child(2) button,
+          nav > div > button {
+            font-size: 10px !important;
+            padding: 3px 6px !important;
+            border-radius: 6px !important;
+          }
+          /* 允许换行，减小拥挤 */
+          nav > div { flex-wrap: wrap !important; row-gap: 4px !important; }
+          /* 语言按钮移到下一行 */
+          nav > div > button { order: 2 !important; }
+          nav > div > div:first-child { order: 1 !important; }
+        }
+        @media (max-width: 320px) {
+          nav { padding: 3px 8px !important; }
+          nav div div:nth-child(2) { gap: 3px !important; }
+          nav div div:nth-child(2) button,
+          nav > div > button {
+            font-size: 9.5px !important;
+            padding: 2px 6px !important;
+            border-radius: 5px !important;
+          }
+        }
         
         @media (max-width: 1024px) {
           nav div div:first-child span {
@@ -741,29 +792,63 @@ export default function Home() {
         }
       `}</style>
       <style jsx global>{`
-        /* 开发者端区域 - 移动端间距优化 */
-        @media (max-width: 768px) {
+        /* 开发者端区域 - 桌面端避免遮挡，改为纵向堆叠 */
+        @media (min-width: 769px) {
+          .developer-section {
+            height: auto !important;
+            padding: 0 16px 40px 16px !important;
+          }
+          .developer-section .dev-desc,
+          .developer-section .dev-card {
+            position: static !important;
+            transform: none !important;
+            left: auto !important;
+            right: auto !important;
+            top: auto !important;
+          }
           .developer-section .dev-desc {
-            max-width: 95% !important;
-            left: 16px !important;
-            top: 38% !important;
-            padding-right: 50px !important;
-            transform: translateY(-50%) !important;
+            max-width: 70% !important;
+            margin: 16px 0 20px 0 !important;
           }
           .developer-section .dev-card {
-            left: 16px !important;
-            top: 82% !important;
-            transform: translateY(-50%) !important;
+            display: inline-flex !important;
+            margin-top: 12px !important;
+          }
+        }
+        /* 开发者端区域 - 移动端间距优化 */
+        @media (max-width: 768px) {
+          /* 在移动端改为正常文档流，避免按钮遮挡文字 */
+          .developer-section {
+            height: auto !important;
+            padding: 0 16px 32px 16px !important;
+          }
+          .developer-section .dev-desc,
+          .developer-section .dev-card {
+            position: static !important;
+            transform: none !important;
+            left: auto !important;
+            right: auto !important;
+            top: auto !important;
+          }
+          .developer-section .dev-desc {
+            max-width: 95% !important;
+            padding-right: 0 !important;
+            margin: 8px 0 16px 0 !important;
+          }
+          .developer-section .dev-card {
+            width: auto !important;
+            display: inline-flex !important;
+            margin: 8px 0 0 0 !important;
           }
         }
         @media (max-width: 480px) {
           .developer-section .dev-desc {
-            max-width: 90% !important;
-            top: 34% !important;
-            padding-right: 30px !important;
+            max-width: 92% !important;
+            padding-right: 0 !important;
+            margin-bottom: 14px !important;
           }
           .developer-section .dev-card {
-            top: 78% !important;
+            margin-top: 6px !important;
           }
         }
       `}</style>
