@@ -101,6 +101,7 @@ export default function DeveloperManagement() {
   const [successMessage, setSuccessMessage] = useState<string>('');
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [isSuccess, setIsSuccess] = useState(true);
+  const [isSmall, setIsSmall] = useState(false);
   
   // 表单状态
   const [formData, setFormData] = useState({
@@ -129,6 +130,13 @@ export default function DeveloperManagement() {
 
   useEffect(() => {
     fetchDevelopers();
+  }, []);
+
+  useEffect(() => {
+    const check = () => setIsSmall(typeof window !== 'undefined' ? window.innerWidth < 640 : false);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
   }, []);
 
   // 搜索和筛选逻辑
@@ -418,7 +426,7 @@ export default function DeveloperManagement() {
         <h2 className="text-xl font-semibold mb-4" style={{ color: '#fff', textShadow: '0 1px 4px rgba(0,0,0,0.18)' }}>{t.developerList}</h2>
         
                 {/* 搜索和筛选区域 */}
-        <div style={{ 
+      <div style={{ 
           marginBottom: 24, 
           color: '#fff', 
           textShadow: '0 1px 4px rgba(0,0,0,0.18)',
@@ -428,6 +436,13 @@ export default function DeveloperManagement() {
           backdropFilter: 'blur(10px)',
           border: '1px solid rgba(255, 255, 255, 0.2)'
         }}>
+          {/** 简易断点：小屏适配（<640px） */}
+          {(() => {
+            if (typeof window !== 'undefined' && window.innerWidth < 640) {
+              return null;
+            }
+            return null;
+          })()}
           <div style={{ 
             display: 'flex',
             gap: 20,
@@ -437,9 +452,8 @@ export default function DeveloperManagement() {
             {/* 搜索框 */}
             <div style={{ 
               position: 'relative', 
-              flex: 1,
-              minWidth: 320,
-              maxWidth: 450
+              flex: '0 1 auto',
+              width: 'clamp(240px, 75vw, 420px)'
             }}>
               <label style={{ 
                 display: 'block', 
@@ -465,8 +479,8 @@ export default function DeveloperManagement() {
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder={lang === 'zh' ? '输入姓名、角色、技能关键词...' : 'Enter name, role, skills...'}
                                      style={{
-                     width: '100%',
-                     padding: '16px 20px 16px 48px',
+                    width: '100%',
+                    padding: typeof window !== 'undefined' && window.innerWidth < 640 ? '12px 16px 12px 40px' : '16px 20px 16px 48px',
                      borderRadius: 12,
                      border: 'none',
                      fontSize: 15,
@@ -490,12 +504,12 @@ export default function DeveloperManagement() {
                    top: '50%',
                    transform: 'translateY(-50%)',
                    color: '#1890ff',
-                   fontSize: 16,
+                  fontSize: typeof window !== 'undefined' && window.innerWidth < 640 ? 14 : 16,
                    display: 'flex',
                    alignItems: 'center',
                    justifyContent: 'center',
-                   width: 24,
-                   height: 24,
+                  width: typeof window !== 'undefined' && window.innerWidth < 640 ? 20 : 24,
+                  height: typeof window !== 'undefined' && window.innerWidth < 640 ? 20 : 24,
                    pointerEvents: 'none'
                  }}>
                    🔍
@@ -931,13 +945,22 @@ export default function DeveloperManagement() {
       {showForm && (
         <div style={{
           position: 'fixed', left: 0, top: 0, width: '100vw', height: '100vh',
-          background: 'rgba(0,0,0,0.15)', zIndex: 4000, display: 'flex', alignItems: 'center', justifyContent: 'center'
+          background: 'rgba(0,0,0,0.15)', zIndex: 4000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isSmall ? 12 : 0
         }}>
           <div style={{
-            background: '#fff', borderRadius: 12, minWidth: 480, maxWidth: 600, boxShadow: '0 8px 32px rgba(0,0,0,0.10)', 
-            padding: 32, position: 'relative', maxHeight: '90vh', overflowY: 'auto'
+            background: '#fff', borderRadius: 12, width: 'clamp(320px, 92vw, 640px)', boxShadow: '0 8px 32px rgba(0,0,0,0.10)', 
+            padding: isSmall ? 16 : 32, position: 'relative', maxHeight: '90vh', overflowY: 'auto'
           }}>
-            <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 24 }}>
+            <button
+              aria-label="Close"
+              onClick={() => { setShowForm(false); setEditingId(null); }}
+              style={{ position: 'absolute', top: 12, right: 12, background: 'transparent', border: 'none', fontSize: 20, color: '#94a3b8', cursor: 'pointer', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', transition: 'background-color 0.2s' }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f1f5f9')}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+            >
+              ×
+            </button>
+            <h2 style={{ fontSize: isSmall ? 20 : 24, fontWeight: 700, marginBottom: isSmall ? 16 : 24 }}>
               {editingId ? (lang === 'zh' ? '编辑开发者' : 'Edit Developer') : t.addDeveloper}
             </h2>
             
@@ -1004,7 +1027,7 @@ export default function DeveloperManagement() {
 
               <div>
                 <label style={{ display: 'block', marginBottom: 8, fontWeight: 600 }}>{t.availableHours} *</label>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 12 }}>
                   <div>
                     <label style={{ display: 'block', marginBottom: 4, fontSize: 12, color: '#666' }}>
                       {lang === 'zh' ? '第1周' : 'Week 1'}
@@ -1074,7 +1097,7 @@ export default function DeveloperManagement() {
                 />
               </div>
 
-              <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
+              <div style={{ display: 'flex', gap: 12, marginTop: 16, flexDirection: isSmall ? 'column' : 'row' }}>
                 <button
                   type="submit"
                   className="btn"

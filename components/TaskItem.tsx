@@ -135,7 +135,7 @@ export default function TaskItem({ i, task, lang, t, teamData, assignMode, roleM
                   style={{ cursor: 'pointer', userSelect: 'none' }}
                   title={canAssign ? t.detail : t.detailInsufficient}
                 >
-                  {lang === 'zh' ? (member.name_zh || member.name) : (member.name_en || member.name)} <span style={{ color: '#64748b', fontWeight: 400 }}>({effectiveHours}{lang === 'zh' ? '小时' : 'h'})</span>
+                  <span className="member-name">{lang === 'zh' ? (member.name_zh || member.name) : (member.name_en || member.name)}</span> <span style={{ color: '#64748b', fontWeight: 400 }}>({effectiveHours}{lang === 'zh' ? '小时' : 'h'})</span>
                 </span>
               );
             })}
@@ -164,7 +164,7 @@ export default function TaskItem({ i, task, lang, t, teamData, assignMode, roleM
                   style={{ cursor: 'pointer', userSelect: 'none' }}
                   title={t.select}
                 >
-                  {lang === 'zh' ? (member.name_zh || member.name) : (member.name_en || member.name)} <span style={{ color: '#64748b', fontWeight: 400 }}>({effectiveHours}{lang === 'zh' ? '小时' : 'h'})</span>
+                  <span className="member-name">{lang === 'zh' ? (member.name_zh || member.name) : (member.name_en || member.name)}</span> <span style={{ color: '#64748b', fontWeight: 400 }}>({effectiveHours}{lang === 'zh' ? '小时' : 'h'})</span>
                 </span>
               );
             })}
@@ -181,7 +181,7 @@ export default function TaskItem({ i, task, lang, t, teamData, assignMode, roleM
                   style={{ cursor: 'pointer', userSelect: 'none' }}
                   title={t.select}
                 >
-                  {lang === 'zh' ? (member.name_zh || member.name) : (member.name_en || member.name)} <span style={{ color: '#64748b', fontWeight: 400 }}>({effectiveHours}{lang === 'zh' ? '小时' : 'h'})</span>
+                  <span className="member-name">{lang === 'zh' ? (member.name_zh || member.name) : (member.name_en || member.name)}</span> <span style={{ color: '#64748b', fontWeight: 400 }}>({effectiveHours}{lang === 'zh' ? '小时' : 'h'})</span>
                 </span>
               );
             })}
@@ -198,7 +198,7 @@ export default function TaskItem({ i, task, lang, t, teamData, assignMode, roleM
                   style={{ cursor: 'pointer', userSelect: 'none' }}
                   title={t.select}
                 >
-                  {lang === 'zh' ? (member.name_zh || member.name) : (member.name_en || member.name)} <span style={{ color: '#64748b', fontWeight: 400 }}>({effectiveHours}{lang === 'zh' ? '小时' : 'h'})</span>
+                  <span className="member-name">{lang === 'zh' ? (member.name_zh || member.name) : (member.name_en || member.name)}</span> <span style={{ color: '#64748b', fontWeight: 400 }}>({effectiveHours}{lang === 'zh' ? '小时' : 'h'})</span>
                 </span>
               );
             })}
@@ -220,7 +220,7 @@ export default function TaskItem({ i, task, lang, t, teamData, assignMode, roleM
                   style={{ cursor: 'pointer', userSelect: 'none' }}
                   title={t.detailInsufficient}
                 >
-                  {lang === 'zh' ? (member.name_zh || member.name) : (member.name_en || member.name)} <span style={{ color: '#64748b', fontWeight: 400 }}>({effectiveHours}{lang === 'zh' ? '小时' : 'h'})</span>
+                  <span className="member-name">{lang === 'zh' ? (member.name_zh || member.name) : (member.name_en || member.name)}</span> <span style={{ color: '#64748b', fontWeight: 400 }}>({effectiveHours}{lang === 'zh' ? '小时' : 'h'})</span>
                 </span>
               );
             })
