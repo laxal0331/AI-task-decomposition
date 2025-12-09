@@ -129,6 +129,22 @@ export default function ResultPage() {
     };
   }, []);
 
+  // 从数据库获取订单数据
+  const fetchOrderData = async (orderId: string) => {
+    try {
+      const res = await fetch(`/api/orders?orderId=${orderId}`);
+      const data = await res.json();
+      if (data.error) {
+        if (process.env.NODE_ENV !== 'production') console.error('Fetch order error:', data.error);
+        return;
+      }
+      setData({ tasks: data.tasks || [], selectedMembers: data.selectedMembers || {}, orderId });
+      if (data.order && data.order.status) setOrderStatus(data.order.status);
+    } catch (error) {
+      if (process.env.NODE_ENV !== 'production') console.error('Fetch order error:', error);
+    }
+  };
+
   useEffect(() => {
     // 优先从数据库获取订单数据
     if (router.query.orderId) {
@@ -156,22 +172,6 @@ export default function ResultPage() {
     }
     fetchMembers();
   }, []);
-
-  // 从数据库获取订单数据
-  const fetchOrderData = async (orderId: string) => {
-    try {
-      const res = await fetch(`/api/orders?orderId=${orderId}`);
-      const data = await res.json();
-      if (data.error) {
-        if (process.env.NODE_ENV !== 'production') console.error('Fetch order error:', data.error);
-        return;
-      }
-      setData({ tasks: data.tasks || [], selectedMembers: data.selectedMembers || {}, orderId });
-      if (data.order && data.order.status) setOrderStatus(data.order.status);
-    } catch (error) {
-      if (process.env.NODE_ENV !== 'production') console.error('Fetch order error:', error);
-    }
-  };
 
   const handleFinishOrder = () => setShowFinishModal(true);
   const confirmFinishOrder = async () => {
