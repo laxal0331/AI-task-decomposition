@@ -350,17 +350,17 @@ export default function ResultPage() {
             {t.lang}
           </button>
         </div>
-        <h1 className="text-2xl font-bold mb-6">{t.title}</h1>
+        <h1 className="text-2xl font-bold mb-6" style={{ color: '#fff' }}>{t.title}</h1>
         <div style={{marginBottom:32}}>
-          <div style={{fontWeight:700, fontSize:18, marginBottom:8}}>{t.overallProgress}</div>
+          <div style={{fontWeight:700, fontSize:18, marginBottom:8, color: '#fff'}}>{t.overallProgress}</div>
           <div style={{height:18, background:'#f1f5f9', borderRadius:9, overflow:'hidden', position:'relative'}}>
             <div style={{width: `${Math.round(overallProgress*100)}%`, height:'100%', background:'#1890ff', borderRadius:9, transition:'width 0.4s'}}></div>
-            <span style={{position:'absolute', left:'50%', top:0, transform:'translateX(-50%)', fontWeight:600, color:'#222', fontSize:14}}>{Math.round(overallProgress*100)}%</span>
+            <span style={{position:'absolute', left:'50%', top:0, transform:'translateX(-50%)', fontWeight:600, color:'#fff', fontSize:14}}>{Math.round(overallProgress*100)}%</span>
           </div>
         </div>
         <div style={{marginBottom:24, display:'flex', alignItems:'center'}}>
           <div style={{display:'flex', alignItems:'center', gap:16}}>
-            <span style={{fontWeight:600}}>{lang === 'zh' ? '排序方式：' : 'Sort by:'}</span>
+            <span style={{fontWeight:600, color:'#fff'}}>{lang === 'zh' ? '排序方式：' : 'Sort by:'}</span>
             <button
               className="btn"
               style={{background: sortMode==='default' ? '#1890ff' : '#f1f5f9', color: sortMode==='default' ? '#fff' : '#222', borderRadius:6, fontWeight:600, fontSize:14, padding:'4px 18px', border:'none', cursor:'pointer'}}
