@@ -347,7 +347,7 @@ export default function ResultPage() {
             className="btn" 
             onClick={() => setLang(lang === 'zh' ? 'en' : 'zh')}
           >
-            {t.lang}
+            {lang === 'zh' ? texts.en.lang : texts.zh.lang}
           </button>
         </div>
         <h1 className="text-2xl font-bold mb-6" style={{ color: '#fff' }}>{t.title}</h1>
