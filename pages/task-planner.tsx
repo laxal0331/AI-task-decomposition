@@ -83,9 +83,6 @@ export default function TaskPlanner() {
   const [assignMode, setAssignMode] = useState<'slow' | 'balanced' | 'fast'>('slow');
   const [assignedTasks, setAssignedTasks] = useState<{ [memberId: string]: number[] }>({});
   const [lang, setLang] = useState<'zh' | 'en'>('zh');
-  // 缓存文本对象和计算结果，避免重复创建
-  const t = useMemo(() => texts[lang], [lang]);
-  const currentOrderId = useMemo(() => dbOrderId || orderId, [dbOrderId, orderId]);
   const router = useRouter();
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMsg, setModalMsg] = useState("");
@@ -99,9 +96,12 @@ export default function TaskPlanner() {
   const [teamData, setTeamData] = useState<any[]>([]);
   const { orderId } = router.query;
   const [orderStatus, setOrderStatus] = useState<string | null>(null);
-  // 🔧 简化状态管理，移除多余的延迟机制状态
   const [isFirstDecomposition, setIsFirstDecomposition] = useState<boolean>(true);
   const [showAutoSelectButton, setShowAutoSelectButton] = useState<boolean>(false);
+  
+  // 缓存文本对象和计算结果，避免重复创建（放在所有依赖变量声明之后）
+  const t = useMemo(() => texts[lang], [lang]);
+  const currentOrderId = useMemo(() => dbOrderId || orderId, [dbOrderId, orderId]);
   
   // 调试信息（已移除日志）
 
@@ -455,8 +455,7 @@ export default function TaskPlanner() {
   
   
   let mainContent;
-  // 使用 dbOrderId 或 orderId，优先使用 dbOrderId（新创建的订单）
-  const currentOrderId = dbOrderId || orderId;
+  // 使用 currentOrderId（已在上面通过useMemo缓存）
   
   if (currentOrderId && tasks.length > 0) {
     // 任务分配界面内容 - 有任务数据时显示
@@ -571,15 +570,14 @@ export default function TaskPlanner() {
                 className="btn"
                 onClick={async () => {
                   try {
-                    const currentOrderIdFinal = (dbOrderId || orderId) as string | undefined;
                     const assignments = buildAssignments(tasks, selectedMembers);
                     if (!assignments.length) {
                       setModalMsg('请至少为一个任务选择成员');
                       setModalOpen(true);
                       return;
                     }
-                    await submitAssignments(assignments, currentOrderIdFinal);
-                    router.push({ pathname: '/result', query: { orderId: currentOrderIdFinal } });
+                    await submitAssignments(assignments, currentOrderId);
+                    router.push({ pathname: '/result', query: { orderId: currentOrderId } });
                     } catch (error) {
                     setModalMsg(`分配失败: ${String(error)}`);
                     setModalOpen(true);
