@@ -10,17 +10,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: "请输入目标" });
   }
 
-  // 调试环境变量
-  if (process.env.NODE_ENV !== 'production') {
-    console.log("环境变量检查:");
-    console.log("DEEPSEEK_API_KEY 存在:", !!process.env.DEEPSEEK_API_KEY);
-    console.log("OPENAI_API_KEY 存在:", !!process.env.OPENAI_API_KEY);
-    console.log("SUPABASE_URL 存在:", !!process.env.SUPABASE_URL);
-    console.log("NEXT_PUBLIC_SUPABASE_URL 存在:", !!process.env.NEXT_PUBLIC_SUPABASE_URL);
-    console.log("SUPABASE_ANON_KEY 存在:", !!process.env.SUPABASE_ANON_KEY);
-    console.log("NEXT_PUBLIC_SUPABASE_ANON_KEY 存在:", !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
-  }
-
   // 检查是否有API密钥
   if (!process.env.DEEPSEEK_API_KEY && !process.env.OPENAI_API_KEY) {
     console.error("缺少API密钥配置");
@@ -33,24 +22,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     if (process.env.NODE_ENV !== 'production') console.log("开始AI任务分解，目标:", goal);
     
-    // 生成任务
-    const tasks = await getTasksFromAI(goal, lang);
-    if (process.env.NODE_ENV !== 'production') console.log("AI任务分解完成，任务数量:", tasks.length);
+    // 并行执行AI任务分解和获取团队成员
+    const [tasks, members] = await Promise.all([
+      getTasksFromAI(goal, lang),
+      teamMemberService.getAll()
+    ]);
     
-    // 获取所有团队成员
-    const members = await teamMemberService.getAll();
-    if (process.env.NODE_ENV !== 'production') console.log("获取团队成员完成，成员数量:", members.length);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log("AI任务分解完成，任务数量:", tasks.length);
+      console.log("获取团队成员完成，成员数量:", members.length);
+    }
     
     // 创建订单（带任务数量）
     const orderId = Date.now().toString();
     await orderService.createOrder(orderId, goal, assignMode, tasks.length, lang);
     if (process.env.NODE_ENV !== 'production') console.log("创建订单完成，订单ID:", orderId);
     
-    // 保存任务到数据库，并补充id字段
+    // 保存任务到数据库，并补充id字段 - 并行化优化
     const tasksWithId = [];
+    const taskCreationPromises = [];
+    
     for (const [index, task] of tasks.entries()) {
       const taskId = task.id || `${orderId}_${index}`;
-      await taskService.createTask({
+      const taskData = {
         id: taskId,
         orderId: orderId,
         titleZh: task.title_zh || task.title || '',
@@ -58,9 +52,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         roleZh: task.role_zh || task.role || '',
         roleEn: task.role_en || task.role || '',
         estimatedHours: task.estimated_hours || 0
-      });
+      };
+      
+      taskCreationPromises.push(taskService.createTask(taskData));
       tasksWithId.push({ ...task, id: taskId });
     }
+    
+    // 并行执行所有任务创建
+    await Promise.all(taskCreationPromises);
     if (process.env.NODE_ENV !== 'production') console.log("保存任务到数据库完成");
     
     // 返回任务数据和订单ID和成员

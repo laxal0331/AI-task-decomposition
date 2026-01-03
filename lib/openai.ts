@@ -40,7 +40,7 @@ export async function getTasksFromAI(goal: string, lang: 'zh' | 'en' = 'zh') {
     try {
       if (process.env.NODE_ENV !== 'production') console.log("开始调用DeepSeek API，目标：", goal);
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 25000); // 25秒超时
+      const timeoutId = setTimeout(() => controller.abort(), 20000); // 20秒超时，从25秒优化
       
       const res = await fetch("https://api.deepseek.com/v1/chat/completions", {
         method: "POST",
@@ -53,7 +53,7 @@ export async function getTasksFromAI(goal: string, lang: 'zh' | 'en' = 'zh') {
           messages: [
             {
               role: "system",
-              content: `你是一个项目管理专家，请将用户的项目目标拆解成开发任务列表。输出格式要求：JSON 数组，每个对象包含 "title_zh"（任务名中文）、"title_en"（任务名英文）、"role_zh"（执行角色中文）、"role_en"（执行角色英文）、"estimated_hours"（预计工时，单位小时）。所有内容都要中英文双语输出。`,
+              content: `你是项目管理专家。将项目目标拆解为开发任务JSON数组。格式：[{"title_zh":"任务名","title_en":"Task Name","role_zh":"角色","role_en":"Role","estimated_hours":数字}]。要求：1)任务具体可执行 2)工时8-40小时 3)角色限定：前端工程师/后端工程师/UI设计师/UX设计师/测试工程师/数据库工程师/产品经理/DevOps工程师/全栈工程师。直接输出JSON，无其他文字。`,
             },
             {
               role: "user",
@@ -173,7 +173,7 @@ export async function getTasksFromAI(goal: string, lang: 'zh' | 'en' = 'zh') {
     try {
       if (process.env.NODE_ENV !== 'production') console.log("开始调用OpenAI API，目标：", goal);
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 25000); // 25秒超时
+      const timeoutId = setTimeout(() => controller.abort(), 20000); // 20秒超时，从25秒优化
       
       const res = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
@@ -186,7 +186,7 @@ export async function getTasksFromAI(goal: string, lang: 'zh' | 'en' = 'zh') {
           messages: [
             {
               role: "system",
-              content: `你是一个项目管理专家，请将用户的项目目标拆解成开发任务列表。输出格式要求：JSON 数组，每个对象包含 "title_zh"（任务名中文）、"title_en"（任务名英文）、"role_zh"（执行角色中文）、"role_en"（执行角色英文）、"estimated_hours"（预计工时，单位小时）。所有内容都要中英文双语输出。`,
+              content: `你是项目管理专家。将项目目标拆解为开发任务JSON数组。格式：[{"title_zh":"任务名","title_en":"Task Name","role_zh":"角色","role_en":"Role","estimated_hours":数字}]。要求：1)任务具体可执行 2)工时8-40小时 3)角色限定：前端工程师/后端工程师/UI设计师/UX设计师/测试工程师/数据库工程师/产品经理/DevOps工程师/全栈工程师。直接输出JSON，无其他文字。`,
             },
             {
               role: "user",
