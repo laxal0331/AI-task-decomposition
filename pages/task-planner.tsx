@@ -6,7 +6,7 @@
  * - AI 提醒：请不要在此文件编写功能代码。如需新增功能，请在 lib/* 或 components/* 下创建对应模块，然后在此引入使用。
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from 'next/router';
 import { roleMap } from '../lib/teamData';
 import { smartMatchDevelopersForTask } from '../lib/smartMatch';
@@ -83,7 +83,9 @@ export default function TaskPlanner() {
   const [assignMode, setAssignMode] = useState<'slow' | 'balanced' | 'fast'>('slow');
   const [assignedTasks, setAssignedTasks] = useState<{ [memberId: string]: number[] }>({});
   const [lang, setLang] = useState<'zh' | 'en'>('zh');
-  const t = texts[lang];
+  // 缓存文本对象和计算结果，避免重复创建
+  const t = useMemo(() => texts[lang], [lang]);
+  const currentOrderId = useMemo(() => dbOrderId || orderId, [dbOrderId, orderId]);
   const router = useRouter();
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMsg, setModalMsg] = useState("");
@@ -172,13 +174,12 @@ export default function TaskPlanner() {
     return autoSelectService(tasksData, membersData, mode);
   };
 
-  // 模式切换时按照当前模式自动重选（仅在已存在任务与成员、且未显示手动按钮时）
+  // 优化useEffect依赖，合并相关的副作用
   useEffect(() => {
-    if (tasks.length === 0 || teamData.length === 0) return;
-    if (showAutoSelectButton) return;
+    if (tasks.length === 0 || teamData.length === 0 || showAutoSelectButton) return;
     const autoSelected = executeImmediateAutoSelection(tasks, teamData, assignMode, '模式切换');
     if (Object.keys(autoSelected).length > 0) setSelectedMembers(autoSelected);
-  }, [assignMode, tasks.length, teamData.length, showAutoSelectButton]);
+  }, [assignMode, tasks, teamData, showAutoSelectButton, executeImmediateAutoSelection]);
 
   const { refreshOrders, onViewOrder, onDeleteClickOrder } = useOrdersPanel({
     router,
@@ -294,9 +295,14 @@ export default function TaskPlanner() {
     }
   };
 
-  const isDevDisabled = (dev: any, taskIdx: number) => isDevOverCapacity(dev, taskIdx, tasks, selectedMembers);
+  // 缓存设备容量检查函数
+  const isDevDisabled = useCallback((dev: any, taskIdx: number) => 
+    isDevOverCapacity(dev, taskIdx, tasks, selectedMembers), 
+    [tasks, selectedMembers]
+  );
 
-  const handleDeleteOrder = async (orderId: string) => {
+  // 缓存函数，避免重复创建
+  const handleDeleteOrder = useCallback(async (orderId: string) => {
     try {
       setIsDeletingOrder(true);
       const { filteredOrders } = await removeOrder(orderId);
@@ -309,33 +315,40 @@ export default function TaskPlanner() {
     } finally {
       setTimeout(() => setIsDeletingOrder(false), 300);
     }
-  };
+  }, [removeOrder, setModalMsg, setModalOpen]);
 
   // 兼容老数据：tasks 读取/初始化时自动转换
   const normalizeTaskStatus = normalizeTaskStatusFromHook as unknown as (task: Task) => Task;
 
-  // 计算预计完成时间
-  const calculateEstimatedCompletionTime = () => computeETA(tasks, selectedMembers, teamData, assignMode);
+  // 缓存计算结果，避免重复计算
+  const calculateEstimatedCompletionTime = useCallback(() => 
+    computeETA(tasks, selectedMembers, teamData, assignMode), 
+    [tasks, selectedMembers, teamData, assignMode]
+  );
 
-  // 计算总金额
-  const calculateTotalCost = () => computeCost(tasks, selectedMembers, teamData);
+  const calculateTotalCost = useCallback(() => 
+    computeCost(tasks, selectedMembers, teamData), 
+    [tasks, selectedMembers, teamData]
+  );
+
+  // 优化成员数据获取，使用useCallback缓存
+  const fetchMembersData = useCallback(async () => {
+    try {
+      const members = await fetchMembersSafe();
+      if (members && members.length > 0) {
+        setTeamData(members);
+        if (tasks.length > 0) {
+          const autoSelected = executeImmediateAutoSelection(tasks, members, assignMode, 'API成员加载完成');
+          if (Object.keys(autoSelected).length > 0) setSelectedMembers(autoSelected);
+        }
+      }
+    } catch {}
+  }, [fetchMembersSafe, tasks, assignMode, executeImmediateAutoSelection]);
 
   // 拉取团队成员数据
   useEffect(() => {
-    async function fetchMembers() {
-      try {
-        const members = await fetchMembersSafe();
-        if (members && members.length > 0) {
-          setTeamData(members);
-          if (tasks.length > 0) {
-            const autoSelected = executeImmediateAutoSelection(tasks, members, assignMode, 'API成员加载完成');
-            if (Object.keys(autoSelected).length > 0) setSelectedMembers(autoSelected);
-          }
-        }
-      } catch {}
-    }
-    fetchMembers();
-  }, []);
+    fetchMembersData();
+  }, [fetchMembersData]);
 
   // 拉取订单详情时初始化（收敛到 hook）
   useOrderDetails({
@@ -355,33 +368,29 @@ export default function TaskPlanner() {
     normalizeTaskStatus,
   });
 
-  // 处理重新分配单个任务的逻辑
+  // 优化重新分配任务的逻辑，减少依赖
   useEffect(() => {
     const { reassignTask } = router.query as { reassignTask?: string };
-    if (reassignTask && orderId && tasks.length > 0) {
-      // 找到需要重新分配的任务
-      const taskIndex = tasks.findIndex(task => task.id === reassignTask);
-      if (taskIndex !== -1) {
-        // 清除该任务的分配
-        setSelectedMembers(prev => {
-          const newSelected = { ...prev };
-          delete newSelected[taskIndex];
-          return newSelected;
-        });
-        
-        // 清除该任务的已分配状态
-        setAssignedTasks(prev => {
-          const newAssigned = { ...prev };
-          // 重置所有成员的工时分配
-          Object.keys(newAssigned).forEach(memberId => {
-            newAssigned[memberId] = [0, 0, 0, 0]; // 重置为每周0工时
-          });
-          return newAssigned;
-        });
-        
-        // 任务重置完成
-      }
-    }
+    if (!reassignTask || !orderId || tasks.length === 0) return;
+    
+    const taskIndex = tasks.findIndex(task => task.id === reassignTask);
+    if (taskIndex === -1) return;
+    
+    // 清除该任务的分配
+    setSelectedMembers(prev => {
+      const newSelected = { ...prev };
+      delete newSelected[taskIndex];
+      return newSelected;
+    });
+    
+    // 清除该任务的已分配状态
+    setAssignedTasks(prev => {
+      const newAssigned = { ...prev };
+      Object.keys(newAssigned).forEach(memberId => {
+        newAssigned[memberId] = [0, 0, 0, 0];
+      });
+      return newAssigned;
+    });
   }, [router.query.reassignTask, orderId, tasks]);
 
   // 条件渲染 - 移到所有useEffect之后
@@ -520,7 +529,8 @@ export default function TaskPlanner() {
           ))}
           
           {/* 预计完成时间和总金额显示 */}
-          {tasks.length > 0 && (() => {
+          {useMemo(() => {
+            if (tasks.length === 0) return null;
             const completionInfo = calculateEstimatedCompletionTime();
             const costInfo = calculateTotalCost();
             return (
@@ -533,7 +543,7 @@ export default function TaskPlanner() {
                 selectedMembersCount={Object.keys(selectedMembers).length}
               />
             );
-          })()}
+          }, [tasks.length, calculateEstimatedCompletionTime, calculateTotalCost, lang, assignMode, t, selectedMembers])}
           
 
           
