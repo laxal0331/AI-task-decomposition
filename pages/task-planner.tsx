@@ -528,21 +528,16 @@ export default function TaskPlanner() {
           ))}
           
           {/* 预计完成时间和总金额显示 */}
-          {useMemo(() => {
-            if (tasks.length === 0) return null;
-            const completionInfo = calculateEstimatedCompletionTime();
-            const costInfo = calculateTotalCost();
-            return (
-              <EstimatedSummary
-                lang={lang}
-                assignMode={assignMode}
-                completionInfo={completionInfo}
-                costInfo={costInfo}
-                t={t}
-                selectedMembersCount={Object.keys(selectedMembers).length}
-              />
-            );
-          }, [tasks.length, calculateEstimatedCompletionTime, calculateTotalCost, lang, assignMode, t, selectedMembers])}
+          {tasks.length > 0 && (
+            <EstimatedSummary
+              lang={lang}
+              assignMode={assignMode}
+              completionInfo={calculateEstimatedCompletionTime()}
+              costInfo={calculateTotalCost()}
+              t={t}
+              selectedMembersCount={Object.keys(selectedMembers).length}
+            />
+          )}
           
 
           
