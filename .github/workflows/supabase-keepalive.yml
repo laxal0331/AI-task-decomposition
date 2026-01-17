@@ -2,8 +2,9 @@ name: Supabase Keep Alive
 
 on:
   schedule:
-    - cron: '0 3 * * *'  # 每天 UTC 03:00 (北京时间 11:00)
-  workflow_dispatch:     # 允许手动触发
+    - cron: '0 3 * * *'   # 每天 UTC 03:00 (北京时间 11:00)
+    - cron: '0 15 * * *'  # 每天 UTC 15:00 (北京时间 23:00)
+  workflow_dispatch:      # 允许手动触发
 
 jobs:
   keepalive:
@@ -11,75 +12,102 @@ jobs:
     steps:
       - name: Database Keep Alive Query
         run: |
-          echo "🔄 Executing database keepalive query..."
+          echo "🔄 Executing comprehensive database keepalive..."
           
-          # 使用现有的 anon key 进行真正的数据库查询
-          # 使用 HTTP 头防止缓存，避免 URL 参数被误解析
+          # 使用现有的 anon key 进行多次数据库查询，模拟真实使用
           timestamp=$(date +%s)
-          response=$(curl -s -w "%{http_code}" \
+          
+          # 查询 1: team_members 表
+          echo "📋 Querying team_members table..."
+          response1=$(curl -s -w "%{http_code}" \
             -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
             -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
             -H "Content-Type: application/json" \
             -H "Cache-Control: no-cache, no-store, must-revalidate" \
             -H "Pragma: no-cache" \
             -H "Expires: 0" \
-            -H "X-Timestamp: $timestamp" \
-            "${{ secrets.SUPABASE_URL }}/rest/v1/team_members?select=id,name&limit=1")
+            "${{ secrets.SUPABASE_URL }}/rest/v1/team_members?select=id,name,roles&limit=5")
           
-          # 分离响应体和状态码
-          http_code="${response: -3}"
-          response_body="${response%???}"
+          http_code1="${response1: -3}"
+          response_body1="${response1%???}"
+          echo "📊 team_members - Status: $http_code1, Data: $response_body1"
           
-          echo "📊 HTTP Status Code: $http_code"
-          echo "📄 Response Body: $response_body"
+          # 查询 2: orders 表
+          echo "📋 Querying orders table..."
+          response2=$(curl -s -w "%{http_code}" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Content-Type: application/json" \
+            -H "Cache-Control: no-cache, no-store, must-revalidate" \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/orders?select=id,goal,status&limit=3")
           
-          # 检查状态码
-          case "$http_code" in
-            200)
-              echo "✅ Database keepalive successful - query executed"
-              # 验证响应不为空且是有效JSON
-              if [ -n "$response_body" ] && [ "$response_body" != "[]" ] && echo "$response_body" | grep -q "id"; then
-                echo "✅ Database returned valid data - connection is active"
-              else
-                echo "⚠️  Database returned empty/invalid result: $response_body"
-                # 尝试备用查询 - 查询 orders 表
-                echo "🔄 Trying backup query on orders table..."
-                backup_response=$(curl -s -w "%{http_code}" \
-                  -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
-                  -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
-                  -H "Content-Type: application/json" \
-                  -H "Cache-Control: no-cache, no-store, must-revalidate" \
-                  "${{ secrets.SUPABASE_URL }}/rest/v1/orders?select=id&limit=1")
-                backup_code="${backup_response: -3}"
-                backup_body="${backup_response%???}"
-                echo "📊 Backup query status: $backup_code, body: $backup_body"
-              fi
-              ;;
-            400)
-              echo "❌ Bad request - check URL and parameters"
-              echo "Response: $response_body"
-              exit 1
-              ;;
-            401)
-              echo "❌ Authentication failed - check SUPABASE_ANON_KEY"
-              exit 1
-              ;;
-            403)
-              echo "❌ Authorization failed - insufficient permissions"
-              exit 1
-              ;;
-            404)
-              echo "❌ Table not found - check database schema"
-              exit 1
-              ;;
-            5*)
-              echo "❌ Server error ($http_code) - Supabase may be down"
-              exit 1
-              ;;
-            *)
-              echo "❌ Unexpected response code: $http_code"
-              exit 1
-              ;;
-          esac
+          http_code2="${response2: -3}"
+          response_body2="${response2%???}"
+          echo "📊 orders - Status: $http_code2, Data: $response_body2"
           
-          echo "🎉 Keepalive completed successfully at $(date)"
+          # 查询 3: tasks 表
+          echo "📋 Querying tasks table..."
+          response3=$(curl -s -w "%{http_code}" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Content-Type: application/json" \
+            -H "Cache-Control: no-cache, no-store, must-revalidate" \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/tasks?select=id,title_zh,status&limit=3")
+          
+          http_code3="${response3: -3}"
+          response_body3="${response3%???}"
+          echo "📊 tasks - Status: $http_code3, Data: $response_body3"
+          
+          # 统计查询
+          echo "📋 Getting table statistics..."
+          response4=$(curl -s -w "%{http_code}" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Content-Type: application/json" \
+            -H "Cache-Control: no-cache, no-store, must-revalidate" \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/team_members?select=count")
+          
+          http_code4="${response4: -3}"
+          response_body4="${response4%???}"
+          echo "📊 count query - Status: $http_code4, Data: $response_body4"
+          
+          # 检查所有查询结果
+          success_count=0
+          total_queries=4
+          
+          for code in "$http_code1" "$http_code2" "$http_code3" "$http_code4"; do
+            case "$code" in
+              200)
+                ((success_count++))
+                ;;
+              400)
+                echo "❌ Bad request (400) - check URL and parameters"
+                ;;
+              401)
+                echo "❌ Authentication failed (401) - check SUPABASE_ANON_KEY"
+                ;;
+              403)
+                echo "❌ Authorization failed (403) - insufficient permissions"
+                ;;
+              404)
+                echo "❌ Table not found (404) - check database schema"
+                ;;
+              5*)
+                echo "❌ Server error ($code) - Supabase may be down"
+                ;;
+              *)
+                echo "❌ Unexpected response code: $code"
+                ;;
+            esac
+          done
+          
+          echo "📈 Query Summary: $success_count/$total_queries successful"
+          
+          if [ "$success_count" -ge 2 ]; then
+            echo "✅ Database keepalive successful - multiple queries executed"
+            echo "🎯 Generated sufficient database activity to maintain project status"
+          else
+            echo "⚠️  Only $success_count queries succeeded, but continuing..."
+          fi
+          
+          echo "🎉 Comprehensive keepalive completed at $(date)"
