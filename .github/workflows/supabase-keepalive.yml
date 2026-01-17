@@ -6,21 +6,72 @@ on:
   workflow_dispatch:     # 允许手动触发
 
 jobs:
-  ping:
+  keepalive:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping Supabase Database
+      - name: Database Keep Alive Query
         run: |
-          response=$(curl -s -o /dev/null -w "%{http_code}" \
+          echo "🔄 Executing database keepalive query..."
+          
+          # 使用现有的 anon key 进行真正的数据库查询
+          # 添加强制刷新参数确保不命中缓存
+          timestamp=$(date +%s)
+          response=$(curl -s -w "%{http_code}" \
             -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
             -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
-            "${{ secrets.SUPABASE_URL }}/rest/v1/team_members?select=id&limit=1")
+            -H "Content-Type: application/json" \
+            -H "Cache-Control: no-cache" \
+            -H "Pragma: no-cache" \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/team_members?select=id,name&limit=1&_t=$timestamp")
           
-          echo "HTTP Response Code: $response"
+          # 分离响应体和状态码
+          http_code="${response: -3}"
+          response_body="${response%???}"
           
-          if [ "$response" = "200" ]; then
-            echo "✅ Supabase keepalive successful"
-          else
-            echo "❌ Supabase keepalive failed with code: $response"
-            exit 1
-          fi
+          echo "📊 HTTP Status Code: $http_code"
+          echo "📄 Response Body: $response_body"
+          
+          # 检查状态码
+          case "$http_code" in
+            200)
+              echo "✅ Database keepalive successful - query executed"
+              # 验证响应不为空且是有效JSON
+              if [ -n "$response_body" ] && [ "$response_body" != "[]" ] && echo "$response_body" | grep -q "id"; then
+                echo "✅ Database returned valid data - connection is active"
+              else
+                echo "⚠️  Database returned empty/invalid result: $response_body"
+                # 尝试备用查询 - 查询 orders 表
+                echo "🔄 Trying backup query on orders table..."
+                backup_response=$(curl -s -w "%{http_code}" \
+                  -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+                  -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+                  -H "Content-Type: application/json" \
+                  "${{ secrets.SUPABASE_URL }}/rest/v1/orders?select=id&limit=1&_t=$timestamp")
+                backup_code="${backup_response: -3}"
+                backup_body="${backup_response%???}"
+                echo "📊 Backup query status: $backup_code, body: $backup_body"
+              fi
+              ;;
+            401)
+              echo "❌ Authentication failed - check SUPABASE_ANON_KEY"
+              exit 1
+              ;;
+            403)
+              echo "❌ Authorization failed - insufficient permissions"
+              exit 1
+              ;;
+            404)
+              echo "❌ Table not found - check database schema"
+              exit 1
+              ;;
+            5*)
+              echo "❌ Server error ($http_code) - Supabase may be down"
+              exit 1
+              ;;
+            *)
+              echo "❌ Unexpected response code: $http_code"
+              exit 1
+              ;;
+          esac
+          
+          echo "🎉 Keepalive completed successfully at $(date)"
