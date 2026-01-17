@@ -75,39 +75,40 @@ jobs:
           success_count=0
           total_queries=4
           
-          for code in "$http_code1" "$http_code2" "$http_code3" "$http_code4"; do
-            case "$code" in
-              200)
-                ((success_count++))
-                ;;
-              400)
-                echo "❌ Bad request (400) - check URL and parameters"
-                ;;
-              401)
-                echo "❌ Authentication failed (401) - check SUPABASE_ANON_KEY"
-                ;;
-              403)
-                echo "❌ Authorization failed (403) - insufficient permissions"
-                ;;
-              404)
-                echo "❌ Table not found (404) - check database schema"
-                ;;
-              5*)
-                echo "❌ Server error ($code) - Supabase may be down"
-                ;;
-              *)
-                echo "❌ Unexpected response code: $code"
-                ;;
-            esac
-          done
+          # 逐个检查状态码并计数
+          if [ "$http_code1" = "200" ]; then
+            success_count=$((success_count + 1))
+          else
+            echo "❌ team_members query failed with code: $http_code1"
+          fi
+          
+          if [ "$http_code2" = "200" ]; then
+            success_count=$((success_count + 1))
+          else
+            echo "❌ orders query failed with code: $http_code2"
+          fi
+          
+          if [ "$http_code3" = "200" ]; then
+            success_count=$((success_count + 1))
+          else
+            echo "❌ tasks query failed with code: $http_code3"
+          fi
+          
+          if [ "$http_code4" = "200" ]; then
+            success_count=$((success_count + 1))
+          else
+            echo "❌ count query failed with code: $http_code4"
+          fi
           
           echo "📈 Query Summary: $success_count/$total_queries successful"
           
           if [ "$success_count" -ge 2 ]; then
             echo "✅ Database keepalive successful - multiple queries executed"
             echo "🎯 Generated sufficient database activity to maintain project status"
+            echo "🎉 Comprehensive keepalive completed at $(date)"
+            exit 0
           else
-            echo "⚠️  Only $success_count queries succeeded, but continuing..."
+            echo "❌ Insufficient successful queries ($success_count/$total_queries)"
+            echo "🎉 Keepalive attempted at $(date)"
+            exit 1
           fi
-          
-          echo "🎉 Comprehensive keepalive completed at $(date)"
