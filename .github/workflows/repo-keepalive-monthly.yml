@@ -1,0 +1,36 @@
+name: Repo Keepalive Monthly
+
+on:
+  schedule:
+    # 每月 1 号 03:00 UTC（北京时间大约 11:00）
+    - cron: '0 3 1 * *'
+  workflow_dispatch:
+
+jobs:
+  keep-repo-alive:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Update keepalive timestamp
+        run: |
+          mkdir -p .github/keepalive
+          date -u +"%Y-%m-%dT%H:%M:%SZ" > .github/keepalive/last-keepalive.txt
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/keepalive/last-keepalive.txt
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git commit -m "chore: monthly repo keepalive"
+
+      - name: Push changes
+        run: |
+          git push
