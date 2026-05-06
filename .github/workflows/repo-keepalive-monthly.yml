@@ -2,6 +2,9 @@ name: Repo Keepalive Monthly
 
 on:
   schedule:
+    # 目的：为仓库定期产生一次提交活动，避免长期无活动导致
+    # 基于 schedule 的 GitHub Actions 任务可能被停用（例如 Supabase keepalive）。
+    # 这不是业务功能，仅用于维持自动化任务的长期可用性。
     # 每月 1 号 03:00 UTC（北京时间大约 11:00）
     - cron: '0 3 1 * *'
   workflow_dispatch:
